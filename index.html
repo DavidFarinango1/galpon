@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Visor de Planos — Galpón</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font-family: "Segoe UI", system-ui, sans-serif;
+    background: #1e2126;
+    color: #e8eaed;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ---------- Barra superior ---------- */
+  header {
+    height: 52px;
+    background: #15171b;
+    border-bottom: 1px solid #2c3038;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 14px;
+    flex-shrink: 0;
+    z-index: 10;
+  }
+  header .logo {
+    font-weight: 600;
+    font-size: 15px;
+    color: #7ab8ff;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  header .logo svg { flex-shrink: 0; }
+  .toolbar { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+  .btn {
+    background: #262a31;
+    border: 1px solid #363c46;
+    color: #cfd3da;
+    border-radius: 6px;
+    height: 32px;
+    min-width: 32px;
+    padding: 0 10px;
+    font-size: 13px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    user-select: none;
+    transition: background .12s, border-color .12s;
+  }
+  .btn:hover { background: #2f3540; border-color: #4a5261; }
+  .btn:active { background: #3a4150; }
+  .zoom-label {
+    min-width: 58px;
+    text-align: center;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    color: #9aa0aa;
+  }
+  .sep { width: 1px; height: 22px; background: #333a45; margin: 0 4px; }
+
+  /* ---------- Cuerpo ---------- */
+  .main { flex: 1; display: flex; min-height: 0; }
+
+  /* Panel lateral */
+  aside {
+    width: 230px;
+    background: #191c21;
+    border-right: 1px solid #2c3038;
+    overflow-y: auto;
+    flex-shrink: 0;
+    padding: 10px 8px;
+  }
+  aside h2 {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: #6f7682;
+    padding: 4px 8px 8px;
+  }
+  .plan-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    margin-bottom: 3px;
+    transition: background .12s;
+  }
+  .plan-item:hover { background: #23272e; }
+  .plan-item.active {
+    background: #1d2a3d;
+    border-color: #2e4a6e;
+  }
+  .plan-item .icon {
+    width: 34px; height: 34px;
+    border-radius: 6px;
+    background: #2a2f37;
+    display: flex; align-items: center; justify-content: center;
+    color: #e05252;
+    font-size: 10px; font-weight: 700;
+    flex-shrink: 0;
+  }
+  .plan-item.active .icon { background: #274264; color: #8ec2ff; }
+  .plan-item .name { font-size: 13px; line-height: 1.25; word-break: break-word; }
+  .plan-item .sub { font-size: 11px; color: #6f7682; margin-top: 2px; }
+
+  /* Escenario */
+  #stage {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background:
+      radial-gradient(circle at 50% 40%, #2a2e35 0%, #1e2126 70%);
+    cursor: grab;
+    touch-action: none;
+  }
+  #stage.panning { cursor: grabbing; }
+  #world {
+    position: absolute;
+    top: 0; left: 0;
+    transform-origin: 0 0;
+    will-change: transform;
+  }
+  #pageCanvas {
+    display: block;
+    background: #fff;
+    box-shadow: 0 6px 40px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.06);
+  }
+
+  /* Indicadores */
+  #loading {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 14px;
+    background: rgba(20,22,26,.75);
+    z-index: 5;
+    font-size: 14px;
+    color: #9aa0aa;
+    backdrop-filter: blur(2px);
+  }
+  #loading.hidden { display: none; }
+  .spinner {
+    width: 34px; height: 34px;
+    border: 3px solid #333a45;
+    border-top-color: #7ab8ff;
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  #pageBar {
+    position: absolute;
+    bottom: 16px; left: 50%;
+    transform: translateX(-50%);
+    background: rgba(21,23,27,.92);
+    border: 1px solid #333a45;
+    border-radius: 8px;
+    padding: 6px 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    z-index: 6;
+  }
+  #pageBar.hidden { display: none; }
+
+  #hint {
+    position: absolute;
+    bottom: 16px; right: 16px;
+    font-size: 11.5px;
+    color: #7a8290;
+    background: rgba(21,23,27,.85);
+    border: 1px solid #2c3038;
+    border-radius: 8px;
+    padding: 8px 12px;
+    line-height: 1.7;
+    z-index: 6;
+    pointer-events: none;
+  }
+  kbd {
+    background: #2a2f37;
+    border: 1px solid #3d4450;
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-size: 10.5px;
+    font-family: inherit;
+  }
+
+  @media (max-width: 760px) {
+    aside { width: 170px; }
+    #hint { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7ab8ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 21V8l9-5 9 5v13"/><path d="M3 21h18"/><path d="M9 21v-6h6v6"/>
+    </svg>
+    Visor de Planos — Galpón
+  </div>
+  <div class="toolbar">
+    <a class="btn" href="render.html" style="text-decoration:none; color:#9ecbff; border-color:#3b6ea8;">🏗️ Render 3D</a>
+    <div class="sep"></div>
+    <button class="btn" id="btnZoomOut" title="Alejar (tecla -)">−</button>
+    <div class="zoom-label" id="zoomLabel">100%</div>
+    <button class="btn" id="btnZoomIn" title="Acercar (tecla +)">+</button>
+    <div class="sep"></div>
+    <button class="btn" id="btnFit" title="Ajustar a pantalla (tecla 0)">Ajustar</button>
+    <button class="btn" id="btnReal" title="Tamaño 100% (tecla 1)">1:1</button>
+    <div class="sep"></div>
+    <button class="btn" id="btnRotate" title="Rotar 90° (tecla R)">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>
+      Rotar
+    </button>
+    <button class="btn" id="btnFullscreen" title="Pantalla completa (tecla F)">⛶</button>
+  </div>
+</header>
+
+<div class="main">
+  <aside>
+    <h2>Planos</h2>
+    <div id="planList"></div>
+  </aside>
+
+  <div id="stage">
+    <div id="world"><canvas id="pageCanvas"></canvas></div>
+
+    <div id="loading"><div class="spinner"></div><div id="loadingText">Cargando plano…</div></div>
+
+    <div id="pageBar" class="hidden">
+      <button class="btn" id="btnPrev">‹</button>
+      <span id="pageInfo">1 / 1</span>
+      <button class="btn" id="btnNext">›</button>
+    </div>
+
+    <div id="hint">
+      Arrastra para mover · Rueda para zoom<br>
+      Doble clic para acercar · <kbd>0</kbd> ajustar · <kbd>R</kbd> rotar
+    </div>
+  </div>
+</div>
+
+<script src="lib/pdf.min.js"></script>
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'lib/pdf.worker.min.js';
+
+const stage      = document.getElementById('stage');
+const world      = document.getElementById('world');
+const canvas     = document.getElementById('pageCanvas');
+const ctx        = canvas.getContext('2d');
+const zoomLabel  = document.getElementById('zoomLabel');
+const loadingEl  = document.getElementById('loading');
+const loadingTxt = document.getElementById('loadingText');
+const pageBar    = document.getElementById('pageBar');
+const pageInfo   = document.getElementById('pageInfo');
+const planListEl = document.getElementById('planList');
+
+const DPR        = Math.max(1, window.devicePixelRatio || 1);
+const MAX_PIXELS = 36e6;          // límite de resolución del lienzo (memoria)
+const MIN_ZOOM   = 0.05;
+const MAX_ZOOM   = 30;
+
+let pdfDoc = null;
+let page = null;
+let pageNum = 1;
+let rotation = 0;
+let pageW = 0, pageH = 0;         // tamaño de página en unidades de mundo (escala 1)
+
+// Transformación de vista: pantalla = mundo * z + (tx, ty)
+let z = 1, tx = 0, ty = 0;
+let renderedZoom = 0;             // zoom con el que está pintado el canvas
+let renderTask = null;
+let rerenderTimer = null;
+let currentPlan = null;
+
+/* ---------- Lista de planos ---------- */
+let pdfBase = '/pdf/';                 // servidor local; en hosting estático usa ./planos/
+async function loadPlanList() {
+  let files = [];
+  try {
+    const res = await fetch('/api/pdfs');
+    if (!res.ok) throw new Error();
+    files = await res.json();
+  } catch (e) {
+    try {
+      const res2 = await fetch('planos.json');
+      files = await res2.json();
+      pdfBase = 'planos/';
+    } catch (e2) {
+      loadingTxt.textContent = 'No se pudo obtener la lista de planos.';
+      return;
+    }
+  }
+  planListEl.innerHTML = '';
+  files.forEach((f, i) => {
+    const div = document.createElement('div');
+    div.className = 'plan-item';
+    div.dataset.file = f.name;
+    const label = f.name.replace(/\.pdf$/i, '');
+    div.innerHTML = `<div class="icon">PDF</div>
+      <div><div class="name">${label}</div><div class="sub">${(f.size/1024).toFixed(0)} KB</div></div>`;
+    div.addEventListener('click', () => openPlan(f.name, div));
+    planListEl.appendChild(div);
+    if (i === 0) openPlan(f.name, div);
+  });
+  if (!files.length) loadingTxt.textContent = 'No hay archivos PDF en la carpeta.';
+}
+
+/* ---------- Carga de un plano ---------- */
+async function openPlan(name, itemEl) {
+  document.querySelectorAll('.plan-item').forEach(el => el.classList.remove('active'));
+  if (itemEl) itemEl.classList.add('active');
+  currentPlan = name;
+  loadingEl.classList.remove('hidden');
+  loadingTxt.textContent = 'Cargando ' + name + '…';
+
+  if (pdfDoc) { try { pdfDoc.destroy(); } catch(e){} pdfDoc = null; }
+  pdfDoc = await pdfjsLib.getDocument({ url: pdfBase + encodeURIComponent(name) }).promise;
+  pageNum = 1;
+  rotation = 0;
+  await loadPage();
+  fitToScreen();
+  loadingEl.classList.add('hidden');
+  updatePageBar();
+}
+
+async function loadPage() {
+  page = await pdfDoc.getPage(pageNum);
+  const vp = page.getViewport({ scale: 1, rotation });
+  pageW = vp.width;
+  pageH = vp.height;
+  renderedZoom = 0;               // fuerza repintado
+  await renderAtCurrentZoom(true);
+}
+
+/* ---------- Renderizado nítido ---------- */
+async function renderAtCurrentZoom(force = false) {
+  if (!page) return;
+  let target = z * DPR;
+  const cap = Math.sqrt(MAX_PIXELS / (pageW * pageH));
+  target = Math.min(target, cap);
+  target = Math.max(target, 0.2);
+  if (!force && Math.abs(target - renderedZoom) / target < 0.12) return;
+
+  if (renderTask) { try { renderTask.cancel(); } catch(e){} }
+  const vp = page.getViewport({ scale: target, rotation });
+  const off = document.createElement('canvas');
+  off.width = Math.floor(vp.width);
+  off.height = Math.floor(vp.height);
+  renderTask = page.render({ canvasContext: off.getContext('2d'), viewport: vp });
+  try { await renderTask.promise; } catch (e) { return; }  // cancelado
+  renderTask = null;
+
+  canvas.width = off.width;
+  canvas.height = off.height;
+  ctx.drawImage(off, 0, 0);
+  canvas.style.width = pageW + 'px';
+  canvas.style.height = pageH + 'px';
+  renderedZoom = target;
+}
+
+function scheduleRerender() {
+  clearTimeout(rerenderTimer);
+  rerenderTimer = setTimeout(() => renderAtCurrentZoom(), 180);
+}
+
+/* ---------- Transformación de vista ---------- */
+function applyTransform() {
+  world.style.transform = `translate(${tx}px, ${ty}px) scale(${z})`;
+  zoomLabel.textContent = Math.round(z * 100) + '%';
+}
+
+function setZoom(newZ, cx, cy) {
+  newZ = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, newZ));
+  // mantener el punto (cx, cy) de pantalla fijo
+  tx = cx - (newZ / z) * (cx - tx);
+  ty = cy - (newZ / z) * (cy - ty);
+  z = newZ;
+  applyTransform();
+  scheduleRerender();
+}
+
+function fitToScreen() {
+  const r = stage.getBoundingClientRect();
+  const margin = 40;
+  z = Math.min((r.width - margin) / pageW, (r.height - margin) / pageH);
+  z = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
+  tx = (r.width - pageW * z) / 2;
+  ty = (r.height - pageH * z) / 2;
+  applyTransform();
+  renderAtCurrentZoom(true);
+}
+
+function realSize() {
+  const r = stage.getBoundingClientRect();
+  setZoom(1, r.width / 2, r.height / 2);
+}
+
+/* ---------- Interacción: ratón ---------- */
+stage.addEventListener('wheel', e => {
+  e.preventDefault();
+  const rect = stage.getBoundingClientRect();
+  const factor = Math.pow(1.0015, -e.deltaY);
+  setZoom(z * factor, e.clientX - rect.left, e.clientY - rect.top);
+}, { passive: false });
+
+let panning = false, lastX = 0, lastY = 0;
+const pointers = new Map();
+let pinchDist = 0;
+
+stage.addEventListener('pointerdown', e => {
+  if (e.target.closest('.btn') || e.target.closest('#pageBar')) return;
+  stage.setPointerCapture(e.pointerId);
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (pointers.size === 1) {
+    panning = true;
+    lastX = e.clientX; lastY = e.clientY;
+    stage.classList.add('panning');
+  } else if (pointers.size === 2) {
+    const pts = [...pointers.values()];
+    pinchDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+  }
+});
+
+stage.addEventListener('pointermove', e => {
+  if (!pointers.has(e.pointerId)) return;
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+  if (pointers.size === 2) {
+    const pts = [...pointers.values()];
+    const d = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+    const rect = stage.getBoundingClientRect();
+    const cx = (pts[0].x + pts[1].x) / 2 - rect.left;
+    const cy = (pts[0].y + pts[1].y) / 2 - rect.top;
+    if (pinchDist > 0) setZoom(z * (d / pinchDist), cx, cy);
+    pinchDist = d;
+  } else if (panning) {
+    tx += e.clientX - lastX;
+    ty += e.clientY - lastY;
+    lastX = e.clientX; lastY = e.clientY;
+    applyTransform();
+  }
+});
+
+function endPointer(e) {
+  pointers.delete(e.pointerId);
+  if (pointers.size < 2) pinchDist = 0;
+  if (pointers.size === 0) {
+    panning = false;
+    stage.classList.remove('panning');
+  } else if (pointers.size === 1) {
+    const p = [...pointers.values()][0];
+    lastX = p.x; lastY = p.y;
+    panning = true;
+  }
+}
+stage.addEventListener('pointerup', endPointer);
+stage.addEventListener('pointercancel', endPointer);
+
+stage.addEventListener('dblclick', e => {
+  const rect = stage.getBoundingClientRect();
+  setZoom(z * 2, e.clientX - rect.left, e.clientY - rect.top);
+});
+
+/* ---------- Botones ---------- */
+const center = () => {
+  const r = stage.getBoundingClientRect();
+  return { x: r.width / 2, y: r.height / 2 };
+};
+document.getElementById('btnZoomIn').onclick  = () => { const c = center(); setZoom(z * 1.35, c.x, c.y); };
+document.getElementById('btnZoomOut').onclick = () => { const c = center(); setZoom(z / 1.35, c.x, c.y); };
+document.getElementById('btnFit').onclick     = fitToScreen;
+document.getElementById('btnReal').onclick    = realSize;
+document.getElementById('btnRotate').onclick  = async () => {
+  rotation = (rotation + 90) % 360;
+  loadingEl.classList.remove('hidden');
+  loadingTxt.textContent = 'Rotando…';
+  await loadPage();
+  fitToScreen();
+  loadingEl.classList.add('hidden');
+};
+document.getElementById('btnFullscreen').onclick = () => {
+  if (document.fullscreenElement) document.exitFullscreen();
+  else document.documentElement.requestFullscreen();
+};
+
+/* ---------- Páginas (si el PDF tiene varias) ---------- */
+function updatePageBar() {
+  if (pdfDoc && pdfDoc.numPages > 1) {
+    pageBar.classList.remove('hidden');
+    pageInfo.textContent = pageNum + ' / ' + pdfDoc.numPages;
+  } else {
+    pageBar.classList.add('hidden');
+  }
+}
+async function gotoPage(n) {
+  if (!pdfDoc || n < 1 || n > pdfDoc.numPages) return;
+  pageNum = n;
+  loadingEl.classList.remove('hidden');
+  await loadPage();
+  fitToScreen();
+  loadingEl.classList.add('hidden');
+  updatePageBar();
+}
+document.getElementById('btnPrev').onclick = () => gotoPage(pageNum - 1);
+document.getElementById('btnNext').onclick = () => gotoPage(pageNum + 1);
+
+/* ---------- Teclado ---------- */
+window.addEventListener('keydown', e => {
+  const c = center();
+  if (e.key === '+' || e.key === '=') setZoom(z * 1.35, c.x, c.y);
+  else if (e.key === '-') setZoom(z / 1.35, c.x, c.y);
+  else if (e.key === '0') fitToScreen();
+  else if (e.key === '1') realSize();
+  else if (e.key.toLowerCase() === 'r') document.getElementById('btnRotate').click();
+  else if (e.key.toLowerCase() === 'f') document.getElementById('btnFullscreen').click();
+  else if (e.key === 'ArrowLeft') gotoPage(pageNum - 1);
+  else if (e.key === 'ArrowRight') gotoPage(pageNum + 1);
+});
+
+window.addEventListener('resize', () => { if (page) fitToScreen(); });
+
+loadPlanList();
+</script>
+</body>
+</html>
