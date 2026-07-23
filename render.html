@@ -300,6 +300,13 @@ const texFloorTx = () => canvasTex(512,512,(g,w,h)=>{
   for (let x=0;x<=w;x+=128){ g.beginPath(); g.moveTo(x,0); g.lineTo(x,h); g.stroke(); }
   for (let y=0;y<=h;y+=128){ g.beginPath(); g.moveTo(0,y); g.lineTo(w,y); g.stroke(); }
 }, 4, 5);
+const texReja = () => canvasTex(256,256,(g,w,h)=>{        // reja corrediza (barrotes)
+  g.clearRect(0,0,w,h);
+  g.fillStyle='#39404a';
+  for (let x=0; x<w; x+=22) g.fillRect(x, 0, 7, h);        // barrotes verticales
+  g.fillRect(0, 0, w, 9); g.fillRect(0, h-9, w, 9);        // travesaños
+  g.fillRect(0, h/2-4, w, 8);
+}, 1, 1);
 const texSign = () => canvasTex(1024,128,(g,w,h)=>{
   g.fillStyle='#20344d'; g.fillRect(0,0,w,h);
   g.fillStyle='#f2f5f8'; g.font='bold 72px Segoe UI, Arial';
@@ -339,6 +346,7 @@ const M = {
   bed:      new THREE.MeshStandardMaterial({ color:0xcfd8e2, roughness:0.9 }),
   plant:    new THREE.MeshStandardMaterial({ color:0x4a7038, roughness:1 }),
   sign:     new THREE.MeshBasicMaterial({ map:texSign() }),
+  reja:     new THREE.MeshStandardMaterial({ map:texReja(), transparent:true, alphaTest:0.45, side:THREE.DoubleSide, roughness:0.55, metalness:0.6 }),
   white:    new THREE.MeshStandardMaterial({ color:0xe8e6e0, roughness:0.85 }),
   trunk:    new THREE.MeshStandardMaterial({ color:0x6b4e34, roughness:1 }),
   leaves:   new THREE.MeshStandardMaterial({ color:0x4a7038, roughness:1 }),
@@ -533,7 +541,18 @@ box(0.16, 2.3, 0.08, ex0, Y1+1.15, 8.4, M.frame, ediLevels[1]);
 wallX([[ex0, ex1, Y1, Y2]], ez0, M.paintEdi, ediLevels[1]);
 wallX([[ex0, 4.5, Y1, Y2],[ex1-0.5, ex1, Y1, Y2],[4.5, ex1-0.5, Y1, Y1+1.0],[4.5, ex1-0.5, Y1+2.4, Y2]], ez1, M.paintEdi, ediLevels[1]);
 box(ex1-0.5-4.5, 1.4, 0.06, (4.5+ex1-0.5)/2, Y1+1.7, ez1, M.glass, ediLevels[1]);
-wallZ([[ez0, ez1, Y1, Y2]], ex1, M.paintEdi, ediLevels[1]);
+// cara este de la PB: vano abierto con REJAS CORREDIZAS (paso de montacargas al galpón)
+wallZ([[ez0, ez0+0.5, Y1, Y2], [ez1-0.5, ez1, Y1, Y2]], ex1, M.paintEdi, ediLevels[1]);
+(function(){
+  const zA = ez0+0.5, zB = ez1-0.5;
+  const rj = new THREE.Mesh(new THREE.PlaneGeometry(zB-zA, Y2-Y1-0.25), M.reja);
+  rj.rotation.y = Math.PI/2;
+  rj.position.set(ex1, (Y1+Y2)/2-0.12, (zA+zB)/2);
+  ediLevels[1].add(rj);
+  box(0.14, 0.16, zB-zA, ex1, Y2-0.2, (zA+zB)/2, M.frame, ediLevels[1]);          // guía superior
+  box(0.14, 0.12, zB-zA, ex1, Y1+0.06, (zA+zB)/2, M.frame, ediLevels[1]);         // riel inferior
+  for (let z=zA; z<=zB+0.01; z+=(zB-zA)/4) box(0.16, Y2-Y1-0.2, 0.14, ex1, (Y1+Y2)/2-0.1, z, M.frame, ediLevels[1]);
+})();
 
 // --- B2 (exhibición P1: Y2 → Y3) — banda de letrero + muro cortina ---
 const SGN0 = Y2, SGN1 = Y2+0.9, MCT = Y3-0.15;
@@ -964,6 +983,7 @@ label('Portón 5.00 × 4.40 m', [30, 1.2, 15.9], 0.55, medidas);
 label('Portón andén 4.20 × 4.20 m', [32.3, 0.5, 17.5], 0.55, medidas);
 label('Galpones unidos en L · vano abierto 15.00 m', [33, 1.6, 7.5], 0.65, medidas, true);
 label('Edificio y galpón sin pared · 13.80 m abiertos', [EDI.x1, -1.2, 10], 0.6, medidas, true);
+label('Rejas corredizas · paso de montacargas al galpón', [EDI.x1, Y1+1.8, 11.5], 0.6, medidas, true);
 label('Vía pública', [-6, 1.4, 10], 0.55, medidas);
 if (OPT2) label('3 pórticos cada 6.00 m · volados 1.50 m', [(GN.x0+GN.x1)/2, 5.0, 4], 0.7, medidas, true);
 LV.forEach((v, i) => label('N ' + (v>=0?'+':'−') + Math.abs(v).toFixed(2), [2.6, (i===0 ? -1.6 : v+0.45), 15.5], 0.5, medidas));
