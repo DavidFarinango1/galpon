@@ -93,11 +93,11 @@
   <button class="btn" data-view="peatonal">웃 Peatonal</button>
   <button class="btn" data-view="interiorG">⌂ Interior galpones</button>
   <h3>Edificio por niveles</h3>
-  <button class="btn" data-view="nivReuniones">− N-3.70 · Reuniones</button>
-  <button class="btn" data-view="nivCalle">− N 0.00 · Exhibición</button>
-  <button class="btn" data-view="nivPiso1">− N+3.40 · Exhibición 1</button>
-  <button class="btn" data-view="nivDepto">− N+6.20 · Departamento</button>
-  <button class="btn" data-view="nivTerraza">− N+9.00 · Terraza</button>
+  <button class="btn" data-view="nivReuniones" data-lv="0">− N-3.70 · Reuniones</button>
+  <button class="btn" data-view="nivCalle" data-lv="1">− N 0.00 · Exhibición</button>
+  <button class="btn" data-view="nivPiso1" data-lv="2">− N+3.40 · Exhibición 1</button>
+  <button class="btn" data-view="nivDepto" data-lv="3">− N+6.20 · Departamento</button>
+  <button class="btn" data-view="nivTerraza" data-lv="4">− N+9.00 · Terraza</button>
 </div>
 
 <div id="panel">
@@ -131,7 +131,7 @@ const OPT2 = new URLSearchParams(location.search).get('opt') === '2';
 const DX = OPT2 ? 3 : 0;                       // metros extra de fondo del edificio
 
 document.getElementById('subtitle').textContent = OPT2
-  ? '· OPCIÓN 2 — edificio 15×15 · galpón 15×15 (3 pórticos + volados)'
+  ? '· OPCIÓN 2 — según planos estructurales A-1/A-2/A-3 (julio 2026)'
   : '· OPCIÓN 1 — edificio 15×12 · galpón 15×18';
 const optBtn = document.getElementById('optToggle');
 optBtn.textContent = OPT2 ? '◂ Mirar Opción 1' : 'Mirar Opción 2 ▸';
@@ -142,8 +142,10 @@ const LOT_W = 20;
 const EDI = { x0:3, x1:15+DX, z0:0, z1:15 };
 const GN  = { x0:15+DX, x1:33, z0:0, z1:15 };
 const GE  = { x0:33, x1:45, z0:0, z1:20 };
-const EAVE = 4.30, RIDGE = 5.72;
-const LV = [-3.70, 0, 3.40, 6.20, 9.00];
+const EAVE = 4.30, RIDGE = 5.72;        // galpón: alero 8.00 y cumbrero 9.40 sobre el piso -3.70
+// Opción 2 = cotas de la lámina A-2: entrepisos uniformes de 3.40 m
+const LV = OPT2 ? [-3.70, 0.13, 3.53, 6.93, 10.33] : [-3.70, 0, 3.40, 6.20, 9.00];
+const Y0=LV[0], Y1=LV[1], Y2=LV[2], Y3=LV[3], Y4=LV[4];
 const RAMP = { z0:15, z1:20, xTop:1.0, xBot:28.4 };
 const T = 0.2;
 // Núcleo panorámico: gradas que ENVUELVEN al ascensor de vidrio.
@@ -460,104 +462,118 @@ for (let k=1; k<=4; k++) {
   box(SHX1-SHX0, 0.22, CORE.zS-SHZ1, SHXC, y-0.11, (SHZ1+CORE.zS)/2, M.white, ediLevels[k]);                          // rellano frente a la puerta
 }
 box(ex1-ex0-0.1, 0.22, ez1-ez0-0.1, EXC, LV[0]-0.05, (ez0+ez1)/2, M.floor, ediLevels[0]);
-// columna interior única (300x300 revestida) en cada nivel — retícula 7.5 m
+// columna interior única C1 (350x350 revestida) en cada nivel — retícula 7.33 m
+const COLS = OPT2 ? 0.45 : 0.4;
 for (let k=0; k<4; k++)
-  box(0.4, LV[k+1]-LV[k], 0.4, XCEN, (LV[k]+LV[k+1])/2, 7.5, M.paintInt, ediLevels[k]);
+  box(COLS, LV[k+1]-LV[k], COLS, XCEN, (LV[k]+LV[k+1])/2, 7.5, M.paintInt, ediLevels[k]);
 
-/* ---- ESTRUCTURA DEL EDIFICIO (vista dedicada) — según láminas C1/C2:
-   columnas metálicas 300x300 sobre pedestales 50x50 y plintos a N-5.30,
-   placas 430x430x15 con pernos ASTM A193-B7, cadenas de amarre 35x30.
-   Retícula recomendada 7.5 x 7.5 m → 1 sola columna interior. ---- */
+/* ---- ESTRUCTURA DEL EDIFICIO (vista dedicada) — láminas A-1 / A-2 (julio 2026):
+   9 columnas metálicas C1 350x350 en retícula 7.33 x 7.33 (1 sola interior),
+   pedestales 50x50 + placa 485x485x15 con 12 Ø3/4" ASTM A193-B7,
+   zapata corrida P1 perimetral + plintos P2 3.00x3.00x0.35, cimentación N-5.32,
+   cadenas de amarre 35x25, vigas I500x200x15x8 y secundarias I400x140x10x6. ---- */
 (function(){
-  const gx = [ex0+0.15, XCEN, ex1-0.15];
-  const gz = [ez0+0.15, 7.5, ez1-0.15];
-  const FND = -5.30;
+  const gx = [ex0+0.25, XCEN, ex1-0.25];
+  const gz = [ez0+0.25, 7.5, ez1-0.25];
+  const FND = OPT2 ? -5.32 : -5.30;
+  const CS  = OPT2 ? 0.35 : 0.30;                  // C1 350x350
+  const PLQ = OPT2 ? 0.485 : 0.43;                 // placa de apoyo
   gx.forEach(x => gz.forEach(z => {
-    box(2.0, 0.40, 2.0, x, FND+0.20, z, M.concrete, structEdi);             // plinto 2.0x2.0x0.40
-    box(0.5, (FLOOR-0.02)-(FND+0.40), 0.5, x, (FND+0.40+FLOOR)/2, z, M.concrete, structEdi); // pedestal 50x50
-    box(0.43, 0.03, 0.43, x, FLOOR+0.015, z, M.steelLight, structEdi);      // placa de apoyo 430x430x15
-    box(0.3, 9.0-FLOOR, 0.3, x, (FLOOR+9.0)/2, z, M.steel, structEdi);      // columna metálica 300x300
+    if (OPT2 && (x === XCEN && z === 7.5)) box(3.0, 0.35, 3.0, x, FND+0.175, z, M.concrete, structEdi);  // plinto P2
+    else box(2.0, 0.40, 2.0, x, FND+0.20, z, M.concrete, structEdi);
+    box(0.5, (FLOOR-0.02)-(FND+0.40), 0.5, x, (FND+0.40+FLOOR)/2, z, M.concrete, structEdi);             // pedestal 50x50
+    box(PLQ, 0.03, PLQ, x, FLOOR+0.015, z, M.steelLight, structEdi);
+    box(CS, Y4-FLOOR, CS, x, (FLOOR+Y4)/2, z, M.steel, structEdi);                                       // columna C1
   }));
-  // cadenas de amarre 35x30 entre pedestales
-  gx.forEach(x => box(0.3, 0.35, (gz[2]-gz[0]), x, FLOOR-0.35, 7.5, M.concrete, structEdi));
-  gz.forEach(z => box((gx[2]-gx[0]), 0.35, 0.3, EXC, FLOOR-0.35, z, M.concrete, structEdi));
-  // vigas y losas deck por nivel
-  [0, 3.40, 6.20, 9.00].forEach(y => {
-    gx.forEach(x => box(0.25, 0.42, gz[2]-gz[0], x, y-0.43, 7.5, M.steel, structEdi));
-    gz.forEach(z => box(gx[2]-gx[0], 0.42, 0.25, EXC, y-0.43, z, M.steel, structEdi));
-    for (let zz=1.2; zz<14.5; zz+=1.9)
-      box(gx[2]-gx[0], 0.18, 0.10, EXC, y-0.31, zz, M.steelLight, structEdi, false);
+  if (OPT2) {   // zapata corrida P1 (2.50 de ancho) bajo los muros perimetrales
+    [gz[0], gz[2]].forEach(z => box(ex1-ex0, 0.35, 2.5, EXC, FND+0.175, z, M.concrete, structEdi));
+    box(2.5, 0.35, ez1-ez0, gx[0], FND+0.175, 7.5, M.concrete, structEdi);
+  }
+  // cadenas de amarre 35x25
+  gx.forEach(x => box(0.35, 0.25, (gz[2]-gz[0]), x, FLOOR-0.30, 7.5, M.concrete, structEdi));
+  gz.forEach(z => box((gx[2]-gx[0]), 0.25, 0.35, EXC, FLOOR-0.30, z, M.concrete, structEdi));
+  // vigas y losas deck por nivel (viga 500 mm de peralte + losa 130 mm → 2.77 libre)
+  [Y1, Y2, Y3, Y4].forEach(y => {
+    gx.forEach(x => box(0.20, 0.50, gz[2]-gz[0], x, y-0.13-0.25, 7.5, M.steel, structEdi));
+    gz.forEach(z => box(gx[2]-gx[0], 0.50, 0.20, EXC, y-0.13-0.25, z, M.steel, structEdi));
+    for (let zz=1.2; zz<14.5; zz+=1.15)
+      box(gx[2]-gx[0], 0.40, 0.14, EXC, y-0.13-0.20, zz, M.steelLight, structEdi, false);
     const p = new THREE.Mesh(new THREE.PlaneGeometry(ex1-ex0, ez1-ez0), M.skylight);
     p.rotation.x = -Math.PI/2;
-    p.position.set(EXC, y-0.10, 7.5);
+    p.position.set(EXC, y-0.06, 7.5);
     structEdi.add(p);
   });
-  label('Retícula 7.5 × 7.5 m · 1 sola columna interior', [EXC, 10.6, 7.5], 0.85, structEdi, true);
-  label('Columna metálica 300×300 (9 u)', [XCEN, 5.0, 7.5], 0.6, structEdi);
-  label('Vigas principales de acero · secundarias @ 1.9 m', [EXC, 2.6, 11.5], 0.55, structEdi);
-  label('Plinto 2.00×2.00×0.40 m · N-5.30', [XCEN, -5.0, 7.5], 0.55, structEdi);
-  label('Pedestal 50×50 + placa 430×430×15 (12 Ø3/4")', [ex0+1.5, -4.2, 3.5], 0.5, structEdi);
-  label('Cadena de amarre 35×30', [EXC, -3.3, 12.2], 0.5, structEdi);
-  label('Práctica: acero 6–9 m entre ejes · hormigón 4–6 m', [EXC, 9.6, 7.5], 0.6, structEdi);
+  const tag = OPT2 ? ' (lámina A-1/A-2)' : '';
+  label('Retícula 7.33 × 7.33 m · 1 sola columna interior' + tag, [EXC, Y4+1.6, 7.5], 0.85, structEdi, true);
+  label(OPT2 ? 'Columna metálica C1 350×350 (9 u)' : 'Columna metálica 300×300 (9 u)', [XCEN, Y3-1.2, 7.5], 0.6, structEdi);
+  label('Viga principal I 500×200×15×8 · secundarias @ 1.15 m', [EXC, Y1+2.6, 11.5], 0.55, structEdi);
+  label(OPT2 ? 'Plinto P2 3.00×3.00×0.35 · N-5.32' : 'Plinto 2.00×2.00×0.40 m · N-5.30', [XCEN, -5.0, 7.5], 0.55, structEdi);
+  label('Pedestal 50×50 + placa 485×485×15 (12 Ø3/4")', [ex0+1.5, -4.2, 3.5], 0.5, structEdi);
+  if (OPT2) label('Zapata corrida P1 · ancho 2.50 m', [EXC, -4.6, ez1-0.6], 0.55, structEdi);
+  label('Cadena de amarre 35×25', [EXC, -3.3, 12.2], 0.5, structEdi);
+  label('Altura libre bajo viga 2.77 m', [EXC, Y2-1.4, 3.0], 0.55, structEdi);
 })();
 
-// --- B0 (-3.70 → 0) ---
-wallZ([[ez0, ez1, LV[0], LV[1]]], ex0, M.concrete, ediLevels[0]);
-wallX([[ex0, ex1, LV[0], LV[1]]], ez0, M.paintEdi, ediLevels[0]);
-wallX([[ex0, ex1, LV[0], LV[1]]], ez1, M.paintEdi, ediLevels[0]);
+// --- B0 (subsuelo) — muros de hormigón armado e=35 cm en el perímetro (lámina A-2) ---
+const MW = OPT2 ? 0.35 : T;
+wallZ([[ez0, ez1, LV[0], LV[1]]], ex0, M.concrete, ediLevels[0], MW);
+wallX([[ex0, ex1, LV[0], LV[1]]], ez0, OPT2 ? M.concrete : M.paintEdi, ediLevels[0], MW);
+wallX([[ex0, ex1, LV[0], LV[1]]], ez1, OPT2 ? M.concrete : M.paintEdi, ediLevels[0], MW);
 wallZ([[ez0, 7, LV[0], LV[1]], [13, ez1, LV[0], LV[1]]], ex1, M.paintEdi, ediLevels[0]);   // conexión 6 m frente al ascensor
 
-// --- B1 (0 → 3.40) ---
-wallZ([[ez0, ez0+0.9, 0, 3.4], [ez1-0.9, ez1, 0, 3.4]], ex0, M.paintEdi, ediLevels[1]);
-box(0.06, 3.4, ez1-0.9-(ez0+0.9), ex0, 1.7, ez1/2, M.glass, ediLevels[1]);
-for (let z=ez0+0.9; z<=ez1-0.9+0.01; z+=1.65) box(0.12, 3.4, 0.09, ex0, 1.7, z, M.frame, ediLevels[1]);
-box(0.12, 0.09, ez1-1.8, ex0, 3.3, ez1/2, M.frame, ediLevels[1]);
-box(0.16, 2.3, 0.08, ex0, 1.15, 6.6, M.frame, ediLevels[1]);
-box(0.16, 2.3, 0.08, ex0, 1.15, 8.4, M.frame, ediLevels[1]);
-wallX([[ex0, ex1, 0, 3.4]], ez0, M.paintEdi, ediLevels[1]);
-wallX([[ex0, 4.5, 0, 3.4],[ex1-0.5, ex1, 0, 3.4],[4.5, ex1-0.5, 0, 1.0],[4.5, ex1-0.5, 2.4, 3.4]], ez1, M.paintEdi, ediLevels[1]);
-box(ex1-0.5-4.5, 1.4, 0.06, (4.5+ex1-0.5)/2, 1.7, ez1, M.glass, ediLevels[1]);
-wallZ([[ez0, ez1, 0, 3.4]], ex1, M.paintEdi, ediLevels[1]);
+// --- B1 (PB comercial: Y1 → Y2) ---
+wallZ([[ez0, ez0+0.9, Y1, Y2], [ez1-0.9, ez1, Y1, Y2]], ex0, M.paintEdi, ediLevels[1]);
+box(0.06, Y2-Y1, ez1-0.9-(ez0+0.9), ex0, (Y1+Y2)/2, ez1/2, M.glass, ediLevels[1]);
+for (let z=ez0+0.9; z<=ez1-0.9+0.01; z+=1.65) box(0.12, Y2-Y1, 0.09, ex0, (Y1+Y2)/2, z, M.frame, ediLevels[1]);
+box(0.12, 0.09, ez1-1.8, ex0, Y2-0.1, ez1/2, M.frame, ediLevels[1]);
+box(0.16, 2.3, 0.08, ex0, Y1+1.15, 6.6, M.frame, ediLevels[1]);
+box(0.16, 2.3, 0.08, ex0, Y1+1.15, 8.4, M.frame, ediLevels[1]);
+wallX([[ex0, ex1, Y1, Y2]], ez0, M.paintEdi, ediLevels[1]);
+wallX([[ex0, 4.5, Y1, Y2],[ex1-0.5, ex1, Y1, Y2],[4.5, ex1-0.5, Y1, Y1+1.0],[4.5, ex1-0.5, Y1+2.4, Y2]], ez1, M.paintEdi, ediLevels[1]);
+box(ex1-0.5-4.5, 1.4, 0.06, (4.5+ex1-0.5)/2, Y1+1.7, ez1, M.glass, ediLevels[1]);
+wallZ([[ez0, ez1, Y1, Y2]], ex1, M.paintEdi, ediLevels[1]);
 
-// --- B2 (3.40 → 6.20) ---
-wallZ([[ez0, ez1, 3.4, 4.3]], ex0, M.paintDark, ediLevels[2]);
+// --- B2 (exhibición P1: Y2 → Y3) — banda de letrero + muro cortina ---
+const SGN0 = Y2, SGN1 = Y2+0.9, MCT = Y3-0.15;
+wallZ([[ez0, ez1, SGN0, SGN1]], ex0, M.paintDark, ediLevels[2]);
 const sign = new THREE.Mesh(new THREE.PlaneGeometry(12.5, 0.66), M.sign);
 sign.rotation.y = -Math.PI/2;
-sign.position.set(ex0 - T/2 - 0.012, 3.85, (ez0+ez1)/2);
+sign.position.set(ex0 - T/2 - 0.012, (SGN0+SGN1)/2, (ez0+ez1)/2);
 ediLevels[2].add(sign);
-box(0.06, 6.05-4.3, ez1-ez0-1.2, ex0, (4.3+6.05)/2, ez1/2, M.glass, ediLevels[2]);
-wallZ([[ez0, ez0+0.6, 4.3, 6.2], [ez1-0.6, ez1, 4.3, 6.2]], ex0, M.paintEdi, ediLevels[2]);
-for (let z=ez0+0.6; z<=ez1-0.6+0.01; z+=1.65) box(0.12, 6.05-4.3, 0.09, ex0, (4.3+6.05)/2, z, M.frame, ediLevels[2]);
-wallZ([[ez0, ez1, 6.05, 6.2]], ex0, M.paintEdi, ediLevels[2]);
-wallX([[ex0, ex1, 3.4, 6.2]], ez0, M.paintEdi, ediLevels[2]);
-wallX([[ex0, 4.5, 3.4, 6.2],[ex1-0.5, ex1, 3.4, 6.2],[4.5, ex1-0.5, 3.4, 4.4],[4.5, ex1-0.5, 5.8, 6.2]], ez1, M.paintEdi, ediLevels[2]);
-box(ex1-0.5-4.5, 1.4, 0.06, (4.5+ex1-0.5)/2, 5.1, ez1, M.glass, ediLevels[2]);
-wallZ([[ez0, ez1, 3.4, 6.2]], ex1, M.paintEdi, ediLevels[2]);
+box(0.06, MCT-SGN1, ez1-ez0-1.2, ex0, (SGN1+MCT)/2, ez1/2, M.glass, ediLevels[2]);
+wallZ([[ez0, ez0+0.6, SGN1, Y3], [ez1-0.6, ez1, SGN1, Y3]], ex0, M.paintEdi, ediLevels[2]);
+for (let z=ez0+0.6; z<=ez1-0.6+0.01; z+=1.65) box(0.12, MCT-SGN1, 0.09, ex0, (SGN1+MCT)/2, z, M.frame, ediLevels[2]);
+wallZ([[ez0, ez1, MCT, Y3]], ex0, M.paintEdi, ediLevels[2]);
+wallX([[ex0, ex1, Y2, Y3]], ez0, M.paintEdi, ediLevels[2]);
+wallX([[ex0, 4.5, Y2, Y3],[ex1-0.5, ex1, Y2, Y3],[4.5, ex1-0.5, Y2, Y2+1.0],[4.5, ex1-0.5, Y2+2.4, Y3]], ez1, M.paintEdi, ediLevels[2]);
+box(ex1-0.5-4.5, 1.4, 0.06, (4.5+ex1-0.5)/2, Y2+1.7, ez1, M.glass, ediLevels[2]);
+wallZ([[ez0, ez1, Y2, Y3]], ex1, M.paintEdi, ediLevels[2]);
 
-// --- B3 (6.20 → 9.00) ---
+// --- B3 (departamento: Y3 → Y4) ---
+const AP = Y3+0.8, DT = Y4-0.6;      // antepecho y dintel
 wallZ([
-  [ez0, ez1, 6.2, 7.0], [ez0, ez1, 8.4, 9.0],
-  [ez0, 1.6, 7.0, 8.4], [4.2, 5.8, 7.0, 8.4], [8.4, 10.0, 7.0, 8.4], [12.6, ez1, 7.0, 8.4],
+  [ez0, ez1, Y3, AP], [ez0, ez1, DT, Y4],
+  [ez0, 1.6, AP, DT], [4.2, 5.8, AP, DT], [8.4, 10.0, AP, DT], [12.6, ez1, AP, DT],
 ], ex0, M.paintEdi, ediLevels[3]);
 [[1.6,4.2],[5.8,8.4],[10.0,12.6]].forEach(w => {
-  box(0.06, 1.4, w[1]-w[0], ex0, 7.7, (w[0]+w[1])/2, M.glass, ediLevels[3]);
-  box(0.1, 0.06, w[1]-w[0], ex0-0.06, 7.0, (w[0]+w[1])/2, M.white, ediLevels[3]);
-  box(0.1, 1.4, 0.07, ex0, 7.7, (w[0]+w[1])/2, M.frame, ediLevels[3]);
+  box(0.06, DT-AP, w[1]-w[0], ex0, (AP+DT)/2, (w[0]+w[1])/2, M.glass, ediLevels[3]);
+  box(0.1, 0.06, w[1]-w[0], ex0-0.06, AP, (w[0]+w[1])/2, M.white, ediLevels[3]);
+  box(0.1, DT-AP, 0.07, ex0, (AP+DT)/2, (w[0]+w[1])/2, M.frame, ediLevels[3]);
 });
-wallX([[ex0, ex1, 6.2, 9.0]], ez0, M.paintEdi, ediLevels[3]);
-wallX([[ex0, 5, 6.2, 9.0],[7, ex1, 6.2, 9.0],[5, 7, 6.2, 7.0],[5, 7, 8.4, 9.0]], ez1, M.paintEdi, ediLevels[3]);
-box(2, 1.4, 0.06, 6, 7.7, ez1, M.glass, ediLevels[3]);
-wallZ([[ez0, ez1, 6.2, 9.0]], ex1, M.paintEdi, ediLevels[3]);
+wallX([[ex0, ex1, Y3, Y4]], ez0, M.paintEdi, ediLevels[3]);
+wallX([[ex0, 5, Y3, Y4],[7, ex1, Y3, Y4],[5, 7, Y3, AP],[5, 7, DT, Y4]], ez1, M.paintEdi, ediLevels[3]);
+box(2, DT-AP, 0.06, 6, (AP+DT)/2, ez1, M.glass, ediLevels[3]);
+wallZ([[ez0, ez1, Y3, Y4]], ex1, M.paintEdi, ediLevels[3]);
 
-// --- B4 terraza ---
-[[ez0-0.08], [ez1+0.08]].forEach(p => wallX([[ex0-0.15, ex1+0.15, 9.0, 10.0]], p[0], M.paintEdi, ediLevels[4], 0.15));
-wallZ([[ez0, ez1, 9.0, 10.0]], ex0-0.08, M.paintEdi, ediLevels[4], 0.15);
-wallZ([[ez0, ez1, 9.0, 10.0]], ex1+0.08, M.paintEdi, ediLevels[4], 0.15);
+// --- B4 terraza (sobre la losa Y4) ---
+[[ez0-0.08], [ez1+0.08]].forEach(p => wallX([[ex0-0.15, ex1+0.15, Y4, Y4+1.0]], p[0], M.paintEdi, ediLevels[4], 0.15));
+wallZ([[ez0, ez1, Y4, Y4+1.0]], ex0-0.08, M.paintEdi, ediLevels[4], 0.15);
+wallZ([[ez0, ez1, Y4, Y4+1.0]], ex1+0.08, M.paintEdi, ediLevels[4], 0.15);
 // (el ducto de vidrio sube libre hasta la terraza — sin casetón macizo)
 [[ex0+0.6,1.2],[ex0+0.6,7.5],[ex0+0.6,13.8],[ex1-0.6,1.2],[ex1-0.6,7.5],[ex1-0.6,13.8]].forEach(p =>
-  box(0.25, 2.3, 0.25, p[0], 9.0+1.15, p[1], M.wood, ediLevels[4]));
+  box(0.25, 2.3, 0.25, p[0], Y4+1.15, p[1], M.wood, ediLevels[4]));
 (function tejaRoof(){
-  const y0 = 11.3, half = (ex1-ex0)/2 + 0.7, ridge = y0 + half*0.28;
+  const y0 = Y4+2.3, half = (ex1-ex0)/2 + 0.7, ridge = y0 + half*0.28;
   const zA = ez0-0.7, zB = ez1+0.7, len = zB-zA;
   [1,-1].forEach(sgn => {
     const xE = EXC + sgn*half;
@@ -731,7 +747,7 @@ function galpon(x0, x1, z0, z1, opts) {
   const g = opts.group || world;
   const zc = (z0+z1)/2;
   const slopePct = (RIDGE-EAVE)/(zc-z0);
-  const BASE = FLOOR + 3.0;
+  const BASE = FLOOR + (OPT2 ? 3.8 : 3.0);        // muro de hormigón 1.80 + bloque 2.00 (lámina A-3)
   ['S','N'].forEach(cara => {
     const z = cara==='S' ? z1 : z0;
     const doors = (opts.doors||[]).filter(d => d.cara===cara).sort((a,b)=>a.a-b.a);
@@ -740,6 +756,7 @@ function galpon(x0, x1, z0, z1, opts) {
     segsB.push([prev, x1, FLOOR, BASE]);
     doors.forEach(d => { if (FLOOR+d.h < BASE) segsB.push([d.a, d.b, FLOOR+d.h, BASE]); });
     wallX(segsB, z, M.block, g);
+    if (OPT2 && !doors.length) box(x1-x0, 1.8, T+0.06, (x0+x1)/2, FLOOR+0.9, z, M.concrete, g);   // "murro" 1.80 (lámina A-3)
     let segsS = [], prev2 = x0;
     const tall = doors.filter(d => FLOOR+d.h > BASE);
     tall.forEach(d => { segsS.push([prev2, d.a, BASE, EAVE]); prev2 = d.b; });
@@ -914,14 +931,15 @@ tree(30, -2.0, -5, 1.2); tree(48, -3.1, 24, 1.1); tree(12, -0.8, 24, 1.1);
 
 /* ============ MEDIDAS ============ */
 label('TERRENO 1000 m² · frente 20 m × fondo 50 m', [25, 17.5, 10], 1.1, medidas, true);
-label(OPT2 ? 'EDIFICIO 15 × 15 m · 225 m² por planta' : 'EDIFICIO 15 × 12 m · 180 m² por planta', [EXC, 14.6, 7.5], 1.0, medidas, true);
+label(OPT2 ? 'EDIFICIO 15 × 15 m · 225 m² por planta · entrepisos 3.40 m' : 'EDIFICIO 15 × 12 m · 180 m² por planta', [EXC, Y4+5.5, 7.5], 1.0, medidas, true);
 label(OPT2 ? 'GALPÓN NUEVO 15 × 15 m · 225 m²' : 'GALPÓN NUEVO 15 × 18 m · 270 m²', [(GN.x0+GN.x1)/2, 7.6, 7.5], 1.0, medidas, true);
 label('GALPÓN EXISTENTE 20 × 12 m · 240 m²', [39, 7.9, 10], 1.0, medidas, true);
 label('RAMPA 5.00 m ancho · 18 % · largo 27.4 m', [12, 1.6, 17.5], 0.8, medidas, true);
 label('Retiro frontal 3.00 m', [1.5, 0.7, 4], 0.55, medidas);
 label('Retiro posterior 5.00 m', [47.5, -1.6, 10], 0.6, medidas);
 label('Andén de descarga 1.20 m', [30.5, -3.0, 16.2], 0.6, medidas);
-label('Alero +4.30 · Cumbrero +5.72 (8.0 / 9.4 m del piso)', [(GN.x0+GN.x1)/2, 6.7, -1.2], 0.7, medidas);
+label('Alero +4.30 · Cumbrero +5.70 (8.00 / 9.40 m del piso)', [(GN.x0+GN.x1)/2, 6.7, -1.2], 0.7, medidas);
+if (OPT2) label('Mampostería 3.80 m (muro 1.80 + bloque 2.00)', [(GN.x0+GN.x1)/2, FLOOR+4.3, 15.9], 0.6, medidas);
 label('Portón 5.00 × 4.40 m', [30, 1.2, 15.9], 0.55, medidas);
 label('Portón andén 4.20 × 4.20 m', [32.3, 0.5, 17.5], 0.55, medidas);
 label('Conexión galpones 12.00 m', [33, 1.6, 7.5], 0.6, medidas);
@@ -929,7 +947,7 @@ label('Conexión edificio-galpón 6.00 m', [EDI.x1, -0.9, 10], 0.6, medidas);
 label('Vía pública', [-6, 1.4, 10], 0.55, medidas);
 if (OPT2) label('3 pórticos cada 6.00 m · volados 1.50 m', [(GN.x0+GN.x1)/2, 5.0, 4], 0.7, medidas, true);
 LV.forEach((v, i) => label('N ' + (v>=0?'+':'−') + Math.abs(v).toFixed(2), [2.6, (i===0 ? -1.6 : v+0.45), 15.5], 0.5, medidas));
-label('Cumbrero teja +' + (11.3 + ((EDI.x1-EDI.x0)/2+0.7)*0.28).toFixed(1) + ' m', [EXC, 13.9, 15.2], 0.55, medidas);
+label('Cumbrero teja +' + (Y4+2.3 + ((EDI.x1-EDI.x0)/2+0.7)*0.28).toFixed(1) + ' m', [EXC, Y4+4.6, 15.2], 0.55, medidas);
 
 /* ============ VISTAS ============ */
 const VIEWS = {
@@ -959,6 +977,12 @@ function goView(name) {
   camAnim = { t:0, p0:camera.position.clone(), p1:V(...v.pos), t0:controls.target.clone(), t1:V(...v.tgt) };
   document.querySelectorAll('#views .btn').forEach(b => b.classList.toggle('on', b.dataset.view === name));
 }
+// rotular los botones de nivel con las cotas reales de la opción activa
+document.querySelectorAll('#views .btn[data-lv]').forEach(b => {
+  const v = LV[+b.dataset.lv];
+  const cota = 'N ' + (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(2);
+  b.textContent = '− ' + cota + ' · ' + b.textContent.split('·').pop().trim();
+});
 document.querySelectorAll('#views .btn').forEach(b => b.addEventListener('click', () => goView(b.dataset.view)));
 document.getElementById('sunSlider').addEventListener('input', e => setSunHour(parseFloat(e.target.value)));
 document.getElementById('chkStruct').addEventListener('change', e => { cladNew.visible = !e.target.checked; });
