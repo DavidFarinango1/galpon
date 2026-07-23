@@ -519,7 +519,9 @@ const MW = OPT2 ? 0.35 : T;
 wallZ([[ez0, ez1, LV[0], LV[1]]], ex0, M.concrete, ediLevels[0], MW);
 wallX([[ex0, ex1, LV[0], LV[1]]], ez0, OPT2 ? M.concrete : M.paintEdi, ediLevels[0], MW);
 wallX([[ex0, ex1, LV[0], LV[1]]], ez1, OPT2 ? M.concrete : M.paintEdi, ediLevels[0], MW);
-wallZ([[ez0, 7, LV[0], LV[1]], [13, ez1, LV[0], LV[1]]], ex1, M.paintEdi, ediLevels[0]);   // conexión 6 m frente al ascensor
+// cara este del subsuelo TOTALMENTE ABIERTA hacia el galpón: un solo espacio continuo.
+// Solo quedan los machones junto a las columnas de esquina del eje 3.
+wallZ([[ez0, ez0+0.6, LV[0], LV[1]], [ez1-0.6, ez1, LV[0], LV[1]]], ex1, M.concrete, ediLevels[0], 0.35);
 
 // --- B1 (PB comercial: Y1 → Y2) ---
 wallZ([[ez0, ez0+0.9, Y1, Y2], [ez1-0.9, ez1, Y1, Y2]], ex0, M.paintEdi, ediLevels[1]);
@@ -833,19 +835,35 @@ galpon(GN.x0, GN.x1, GN.z0, GN.z1, {
   ],
   sky: [19.5+DX, 25.5, 30.5],
 });
-wallZ([[GN.z0, 7, FLOOR, EAVE], [13, GN.z1, FLOOR, EAVE], [7, 13, LV[1], EAVE]], GN.x0+0.1, M.sidNew, cladNew);
+// la cara oeste del galpón nuevo queda ABIERTA contra el edificio (sin pared)
 for (let i=0;i<4;i++) box(1.1, 0.25, 0.32, 24.7, FLOOR-0.13-i*0.25, 15.3+ i*0.32, M.concrete, world);
 
-/* ---- GALPÓN EXISTENTE ---- */
+/* ---- GALPÓN EXISTENTE — cara oeste abierta hacia el galpón nuevo (planta en L) ---- */
 galpon(GE.x0, GE.x1, GE.z0, GE.z1, {
   sid: M.sidOld, roof: M.roofOld,
-  doors: [
-    { cara:'W', a:15.4, b:19.6, h:4.2 },
-    { cara:'W', a:2.0, b:14.0, h:4.2, open:true },
-  ],
+  skip: ['W'],
   sky: [37, 41],
 });
-[5.5, 9.5].forEach(z => box(0.3, 4.4, 0.3, GE.x0, FLOOR+2.2, z, M.steel, structure));
+// solo se cierra el tramo que NO comparte con el galpón nuevo (z 15–20), con el portón del andén
+(function(){
+  const zc = (GE.z0+GE.z1)/2, slope = (RIDGE-EAVE)/(zc-GE.z0);
+  const yAt = z => RIDGE - Math.abs(z-zc)*slope;
+  const BASE = FLOOR + (OPT2 ? 3.8 : 3.0);
+  const zA = GN.z1, zB = GE.z1, dA = 15.4, dB = 19.6, dTop = FLOOR + 4.2;
+  wallZ([[zA, dA, FLOOR, BASE], [dB, zB, FLOOR, BASE]], GE.x0, M.block, world);
+  const sh = new THREE.Shape();
+  sh.moveTo(zA, BASE); sh.lineTo(dA, BASE); sh.lineTo(dA, dTop); sh.lineTo(dB, dTop);
+  sh.lineTo(dB, BASE); sh.lineTo(zB, BASE); sh.lineTo(zB, yAt(zB)); sh.lineTo(zA, yAt(zA)); sh.closePath();
+  const mesh = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth:T, bevelEnabled:false }), M.sidOld);
+  mesh.rotation.y = -Math.PI/2;
+  mesh.position.set(GE.x0 + T/2, 0, 0);
+  mesh.castShadow = mesh.receiveShadow = true;
+  world.add(mesh);
+  box(0.1, 4.2-0.08, dB-dA-0.15, GE.x0+0.06, FLOOR+2.1, (dA+dB)/2, M.door, world);   // portón del andén
+  // columnas del vano abierto (borde de la L)
+  [1.5, 6.0, 10.5, 14.6].forEach(z =>
+    box(0.3, yAt(z)-FLOOR, 0.3, GE.x0, (FLOOR+yAt(z))/2, z, M.steel, structure));
+})();
 
 /* ============ ESTRUCTURA GALPÓN NUEVO ============ */
 (function(){
@@ -942,8 +960,8 @@ label('Alero +4.30 · Cumbrero +5.70 (8.00 / 9.40 m del piso)', [(GN.x0+GN.x1)/2
 if (OPT2) label('Mampostería 3.80 m (muro 1.80 + bloque 2.00)', [(GN.x0+GN.x1)/2, FLOOR+4.3, 15.9], 0.6, medidas);
 label('Portón 5.00 × 4.40 m', [30, 1.2, 15.9], 0.55, medidas);
 label('Portón andén 4.20 × 4.20 m', [32.3, 0.5, 17.5], 0.55, medidas);
-label('Conexión galpones 12.00 m', [33, 1.6, 7.5], 0.6, medidas);
-label('Conexión edificio-galpón 6.00 m', [EDI.x1, -0.9, 10], 0.6, medidas);
+label('Galpones unidos en L · vano abierto 15.00 m', [33, 1.6, 7.5], 0.65, medidas, true);
+label('Edificio y galpón sin pared · 13.80 m abiertos', [EDI.x1, -1.2, 10], 0.6, medidas, true);
 label('Vía pública', [-6, 1.4, 10], 0.55, medidas);
 if (OPT2) label('3 pórticos cada 6.00 m · volados 1.50 m', [(GN.x0+GN.x1)/2, 5.0, 4], 0.7, medidas, true);
 LV.forEach((v, i) => label('N ' + (v>=0?'+':'−') + Math.abs(v).toFixed(2), [2.6, (i===0 ? -1.6 : v+0.45), 15.5], 0.5, medidas));
