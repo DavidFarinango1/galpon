@@ -565,7 +565,11 @@ wallZ([
 wallX([[ex0, ex1, Y3, Y4]], ez0, M.paintEdi, ediLevels[3]);
 wallX([[ex0, 5, Y3, Y4],[7, ex1, Y3, Y4],[5, 7, Y3, AP],[5, 7, DT, Y4]], ez1, M.paintEdi, ediLevels[3]);
 box(2, DT-AP, 0.06, 6, (AP+DT)/2, ez1, M.glass, ediLevels[3]);
-wallZ([[ez0, ez1, Y3, Y4]], ex1, M.paintEdi, ediLevels[3]);
+// cara este (hacia el galpón): ventanal corrido en vez de muro ciego
+wallZ([[ez0, ez1, Y3, AP], [ez0, ez1, DT, Y4], [ez0, ez0+0.5, AP, DT], [ez1-0.5, ez1, AP, DT]], ex1, M.paintEdi, ediLevels[3]);
+box(0.06, DT-AP, ez1-ez0-1.0, ex1, (AP+DT)/2, (ez0+ez1)/2, M.glass, ediLevels[3]);
+for (let z=ez0+0.5; z<=ez1-0.5+0.01; z+=1.6) box(0.1, DT-AP, 0.08, ex1, (AP+DT)/2, z, M.frame, ediLevels[3]);
+box(0.12, 0.08, ez1-ez0-1.0, ex1, AP, (ez0+ez1)/2, M.white, ediLevels[3]);
 
 // --- B4 terraza (sobre la losa Y4) ---
 [[ez0-0.08], [ez1+0.08]].forEach(p => wallX([[ex0-0.15, ex1+0.15, Y4, Y4+1.0]], p[0], M.paintEdi, ediLevels[4], 0.15));
@@ -860,9 +864,7 @@ galpon(GE.x0, GE.x1, GE.z0, GE.z1, {
   mesh.castShadow = mesh.receiveShadow = true;
   world.add(mesh);
   box(0.1, 4.2-0.08, dB-dA-0.15, GE.x0+0.06, FLOOR+2.1, (dA+dB)/2, M.door, world);   // portón del andén
-  // columnas del vano abierto (borde de la L)
-  [1.5, 6.0, 10.5, 14.6].forEach(z =>
-    box(0.3, yAt(z)-FLOOR, 0.3, GE.x0, (FLOOR+yAt(z))/2, z, M.steel, structure));
+  // el vano de 15 m queda libre: sin columnas intermedias que corten la L
 })();
 
 /* ============ ESTRUCTURA GALPÓN NUEVO ============ */
