@@ -98,6 +98,12 @@
   <button class="btn" data-view="nivPiso1" data-lv="2">− N+3.40 · Exhibición 1</button>
   <button class="btn" data-view="nivDepto" data-lv="3">− N+6.20 · Departamento</button>
   <button class="btn" data-view="nivTerraza" data-lv="4">− N+9.00 · Terraza</button>
+  <h3>Vista en planta (cenital)</h3>
+  <button class="btn" data-plan="0">▤ Subsuelo −3.70</button>
+  <button class="btn" data-plan="1">▤ Planta baja</button>
+  <button class="btn" data-plan="2">▤ 1er piso</button>
+  <button class="btn" data-plan="3">▤ 2do piso (depto)</button>
+  <button class="btn" data-plan="4">▤ Terraza</button>
 </div>
 
 <div id="panel">
@@ -733,27 +739,69 @@ function chairOf(x, z, ry, parent) {
   });
   label('Sala de exhibición · Piso 1 ≈ ' + (OPT2?'193':'148') + ' m²', [8+DX/2, y+2.6, 7.5], 0.62, g);
 })();
-// N+6.20
+// N+6.93 · DEPARTAMENTO (rediseñado) — 3 dormitorios, sala-comedor, cocina, 2 baños
 (function(){
-  const g = ediLevels[3], y = LV[3];
-  wallZ([[5.9, 8.2, y, y+2.6], [9.6, 14.8, y, y+2.6]], 8.6+DX, M.paintInt, g, IW);
-  wallX([[8.6+DX, 11.2+DX, y, y+2.6], [12.2+DX, CORE.x1, y, y+2.6]], 9.0, M.paintInt, g, IW);
-  wallX([[3.2, 5.4, y, y+2.6], [6.6, 8.6+DX, y, y+2.6]], 8.0, M.paintInt, g, IW);
-  box(2.6, 0.6, 0.95, 5.2, y+0.3, 12.8, M.sofa, g);
-  box(0.95, 0.6, 2.0, 3.9, y+0.3, 11.2, M.sofa, g);
-  box(1.2, 0.4, 0.7, 5.6, y+0.2, 11.3, M.wood, g, false);
-  box(3.4, 0.9, 0.65, 4.95, y+0.45, 0.65, M.fixture, g);
-  box(0.65, 0.9, 2.6, 3.55, y+0.45, 2.2, M.fixture, g);
-  box(1.9, 0.12, 1.0, 5.8+DX/2, y+0.76, 4.6, M.wood, g);
-  [[5.2+DX/2,3.9],[6.4+DX/2,3.9],[5.2+DX/2,5.3],[6.4+DX/2,5.3]].forEach(p => { const c = chairOf(p[0], p[1], p[1]>4.6?Math.PI:0, g); c.position.y = y; });
-  box(1.7, 0.5, 2.1, 11.6+DX, y+0.25, 13.0, M.bed, g);
-  box(1.5, 0.15, 0.5, 11.6+DX, y+0.58, 12.15, M.fixture, g, false);
-  box(1.5, 0.5, 2.0, 10.2+DX, y+0.25, 6.0, M.bed, g);
-  box(1.3, 0.15, 0.5, 10.2+DX, y+0.58, 5.2, M.fixture, g, false);
-  label('Departamento ≈ ' + (OPT2?'193':'148') + ' m² · Sala ' + (OPT2?'8.4':'5.4') + ' × 6.7 m', [5.6+DX/2, y+2.6, 11.8], 0.55, g);
-  label('Cocina · Comedor ' + (OPT2?'8.4':'5.4') + ' × 7.7 m', [5.4+DX/2, y+2.6, 3.0], 0.55, g);
-  label('Dormitorio 6.1 × 5.8 m', [11.6+DX, y+2.5, 12.5], 0.5, g);
-  label('Dormitorio 2 · 3.5 × 3.1 m', [10.4+DX, y+2.5, 6.4], 0.5, g);
+  const g = ediLevels[3], y = LV[3], H = 2.6;
+  const wall = (segs, at, dir) => (dir==='z' ? wallZ : wallX)(segs.map(s=>[s[0],s[1],y,y+H]), at, M.paintInt, g, IW);
+  // helpers de mobiliario (altura relativa a y)
+  const bed = (x,z,w,d,rot) => { const b=box(w,0.5,d,x,y+0.25,z,M.bed,g); if(rot)b.rotation.y=rot; const hb=box(rot?0.15:w,0.55,rot?d:0.15,x+(rot?-w/2+0.07:0),y+0.35,z+(rot?0:-d/2+0.07),M.fixture,g,false); return b; };
+  const sofa = (x,z,w,d) => box(w,0.55,d,x,y+0.28,z,M.sofa,g);
+  const counter = (x,z,w,d) => box(w,0.9,d,x,y+0.45,z,M.fixture,g);
+  const table = (x,z,w,d) => box(w,0.1,d,x,y+0.75,z,M.wood,g);
+
+  // ---- MUROS INTERIORES ----
+  // divisor social(frente) / privado : muro en x=8.7 con vanos
+  wall([[0.3,4.6],[5.4,9.2],[10.0,14.8]], 8.7, 'z');
+  // divisor privado / fondo (baño+ppal) : muro en x=12.7
+  wall([[5.2,9.2],[10.0,14.8]], 12.7, 'z');
+  // frente: separa comedor(z<5) de sala(z>5)
+  wall([[3.2,5.8],[6.8,8.7]], 5.0, 'x');
+  // cocina / dorm3 (z=5) en banda media
+  wall([[8.7,12.7]], 5.0, 'x');
+  // dorm3 / dorm2 (z=10.2)
+  wall([[8.7,12.7]], 10.2, 'x');
+  // baño compartido / dorm principal (z=8.4) en banda fondo
+  wall([[12.7,17.8]], 8.4, 'x');
+  // walk-in del dormitorio principal
+  wall([[15.4,17.8]], 11.4, 'x');
+
+  // ---- COMEDOR (frente-izq, x3.2-8.5 · z0.3-4.7) ----
+  table(5.6, 2.4, 1.1, 2.2);
+  [[5.0,1.4],[6.2,1.4],[5.0,2.4],[6.2,2.4],[5.0,3.4],[6.2,3.4]].forEach(p=>{const c=chairOf(p[0],p[1],0,g);c.position.y=y;});
+  // ---- SALA (frente-der, x3.2-8.5 · z5.2-14.8) ----
+  sofa(4.4, 10.0, 1.0, 3.2);           // sofá contra fachada
+  sofa(6.8, 13.6, 3.0, 0.95);          // sofá lateral
+  box(1.3,0.4,0.7, 5.6, y+0.2, 11.0, M.wood, g, false);   // mesa de centro
+  box(0.4,0.6,2.4, 7.9, y+0.3, 9.5, M.fixture, g, false); // mueble TV
+  // ---- COCINA (x8.9-12.5 · z0.3-4.7) ----
+  counter(9.4, 0.7, 3.0, 0.65);
+  counter(12.1, 2.6, 0.6, 3.8);
+  box(1.8,0.1,0.9, 10.6, y+0.78, 3.4, M.wood, g);         // isla
+  // ---- DORM 3 (x8.9-12.5 · z5.2-10.0) ----
+  bed(10.6, 7.6, 1.5, 2.0, 0);
+  box(1.2,0.5,0.55, 10.6, y+0.25, 9.6, M.fixture, g, false);
+  // ---- DORM 2 (x8.9-12.5 · z10.4-14.8) ----
+  bed(10.6, 13.4, 1.5, 2.0, 0);
+  box(1.2,0.5,0.55, 10.6, y+0.25, 11.0, M.fixture, g, false);
+  // ---- BAÑO COMPARTIDO (x12.9-17.6 · z5.2-8.2) ----
+  box(0.7,0.5,0.5, 13.4, y+0.25, 5.7, M.fixture, g, false);
+  box(0.7,0.4,0.5, 13.4, y+0.2, 6.6, M.fixture, g, false);
+  box(1.6,0.55,0.7, 16.6, y+0.28, 5.6, M.fixture, g, false);
+  // ---- DORM PRINCIPAL (x12.9-17.6 · z8.6-14.8) + walk-in + ensuite ----
+  bed(15.0, 12.0, 1.9, 2.1, 0);
+  box(1.4,0.5,0.55, 13.2, y+0.25, 12.0, M.fixture, g, false);
+  box(2.2,0.6,0.6, 16.4, y+0.3, 13.0, M.fixture, g, false); // clóset walk-in
+  box(0.7,0.5,0.5, 13.3, y+0.25, 9.0, M.fixture, g, false); // ensuite
+  box(1.4,0.55,0.65, 16.6, y+0.28, 9.0, M.fixture, g, false);
+
+  label('DEPARTAMENTO ≈ 205 m²', [EXC-1.5, y+H+0.6, 7.5], 0.7, g, true);
+  label('Sala', [5.2, y+H, 10.5], 0.5, g);
+  label('Comedor', [5.4, y+H, 2.4], 0.45, g);
+  label('Cocina', [10.6, y+H, 2.2], 0.45, g);
+  label('Dorm. 3', [10.6, y+H, 7.6], 0.45, g);
+  label('Dorm. 2', [10.6, y+H, 12.8], 0.45, g);
+  label('Baño', [15.0, y+H, 6.6], 0.4, g);
+  label('Dorm. principal + walk-in', [15.2, y+H, 11.8], 0.5, g);
 })();
 // Terraza
 (function(){
@@ -1017,13 +1065,24 @@ function goView(name) {
   camAnim = { t:0, p0:camera.position.clone(), p1:V(...v.pos), t0:controls.target.clone(), t1:V(...v.tgt) };
   document.querySelectorAll('#views .btn').forEach(b => b.classList.toggle('on', b.dataset.view === name));
 }
+// Vista cenital (planta): cámara casi vertical sobre el nivel, pisos superiores ocultos
+function goPlan(k) {
+  if (structEdi.visible) { structEdi.visible = false; document.getElementById('chkStructEdi').checked = false; }
+  setLevels(k, true);                          // en la terraza también quitamos el techo de teja
+  const cy = LV[k] + 20;
+  camAnim = { t:0,
+    p0:camera.position.clone(), p1:V(EXC+0.01, cy, 7.5),
+    t0:controls.target.clone(), t1:V(EXC, LV[k], 7.5) };
+  document.querySelectorAll('#views .btn').forEach(b => b.classList.toggle('on', b.dataset.plan === String(k)));
+}
+document.querySelectorAll('#views .btn[data-plan]').forEach(b => b.addEventListener('click', () => goPlan(+b.dataset.plan)));
 // rotular los botones de nivel con las cotas reales de la opción activa
 document.querySelectorAll('#views .btn[data-lv]').forEach(b => {
   const v = LV[+b.dataset.lv];
   const cota = 'N ' + (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(2);
   b.textContent = '− ' + cota + ' · ' + b.textContent.split('·').pop().trim();
 });
-document.querySelectorAll('#views .btn').forEach(b => b.addEventListener('click', () => goView(b.dataset.view)));
+document.querySelectorAll('#views .btn[data-view]').forEach(b => b.addEventListener('click', () => goView(b.dataset.view)));
 document.getElementById('sunSlider').addEventListener('input', e => setSunHour(parseFloat(e.target.value)));
 document.getElementById('chkStruct').addEventListener('change', e => { cladNew.visible = !e.target.checked; });
 document.getElementById('chkStructEdi').addEventListener('change', e => {
