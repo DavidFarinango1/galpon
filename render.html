@@ -918,6 +918,7 @@ galpon(GN.x0, GN.x1, GN.z0, GN.z1, {
   sid: M.sidNew, roof: M.roofNew, clad: cladNew,
   skip: ['W','E'],
   doors: [
+    { cara:'S', a:20.0, b:23.0, h:2.5 },              // portón vehicular 4x4 (plano A-3, 1er vano)
     { cara:'S', a:27.5, b:32.5, h:4.4 },
     { cara:'S', a:24.2, b:25.2, h:2.1, ped:true },
   ],
@@ -998,26 +999,33 @@ galpon(GE.x0, GE.x1, GE.z0, GE.z1, {
   }
 })();
 
-/* ============ CAMIÓN BAJANDO LA RAMPA ============ */
+/* ============ CAMIÓN 40HQ PARQUEADO NIVELADO EN EL ANDÉN ============
+   Retrocede por la rampa y se detiene ~1 m antes del portón, sobre el piso
+   plano a −4.90; el piso del contenedor queda a −3.70 (nivel del galpón) y
+   ese metro se une con tablas. Así el camión no queda inclinado y las puertas
+   del contenedor abren sin tocar el piso. */
 (function(){
   const outer = new THREE.Group();
   const t = new THREE.Group();
-  box(2.45, 0.35, 12.2, 0, 0.85, 0, M.frame, t);
-  box(2.45, 2.0, 2.3, 0, 2.0, -5.0, M.cabRed, t);
-  box(2.3, 0.8, 0.3, 0, 1.4, -6.2, M.cabRed, t);
-  box(2.2, 0.9, 0.08, 0, 2.4, -6.16, M.glass, t);
-  box(2.44, 2.6, 6.06, 0, 2.35, 2.2, M.containerB, t);
+  box(2.45, 0.35, 14.5, 0, 0.9, 0, M.frame, t);              // chasis (local z = largo)
+  box(2.45, 2.0, 2.3, 0, 2.05, -6.2, M.cabRed, t);           // cabina (hacia -z)
+  box(2.3, 0.8, 0.3, 0, 1.45, -7.4, M.cabRed, t);
+  box(2.2, 0.9, 0.08, 0, 2.45, -7.36, M.glass, t);
+  box(2.5, 2.6, 12.0, 0, 2.4, 1.15, M.containerB, t);        // contenedor 40HQ (~12 m, hacia +z)
+  box(2.44, 2.55, 0.08, 0, 2.4, 7.2, M.frame, t);            // puertas traseras abiertas
   const wg = new THREE.CylinderGeometry(0.52, 0.52, 0.4, 16);
-  [[1.05,-4.6],[-1.05,-4.6],[1.05,0.6],[-1.05,0.6],[1.05,1.9],[-1.05,1.9],[1.05,4.4],[-1.05,4.4]].forEach(p=>{
+  [-6.0, 5.1, 6.3, 0.6, -0.6].forEach(pz => [1.05,-1.05].forEach(px => {
     const w = new THREE.Mesh(wg, M.tire);
-    w.rotation.z = Math.PI/2; w.position.set(p[0], 0.52, p[1]);
+    w.rotation.z = Math.PI/2; w.position.set(px, 0.52, pz);
     w.castShadow = true; t.add(w);
-  });
-  t.rotation.y = Math.PI/2;
+  }));
+  t.rotation.y = Math.PI/2;                    // largo a lo largo de X; trasera (contenedor) hacia +X
   outer.add(t);
-  outer.rotation.z = -Math.atan(0.187);
-  outer.position.set(13, rampY(13)+0.02, 17.5);
+  outer.rotation.z = -Math.atan(0.187);        // inclinación de la rampa (nariz arriba)
+  outer.position.set(24.6, -4.35, 17.5);       // trasera ~1 m antes del andén (x≈32); piso contenedor ≈ −3.70
   world.add(outer);
+  // tablas puente sobre el hueco de ~1 m entre la trasera del contenedor y el andén
+  for (let i=0;i<5;i++) box(1.1, 0.05, 0.42, 32.2, FLOOR-0.05, 16.3+i*0.55, M.wood, world);
 })();
 
 /* ============ PARQUEO (esquema híbrido) ============ */
@@ -1076,6 +1084,8 @@ label('Retiro frontal 3.00 m · parqueo en paralelo', [1.5, 2.7, 8], 0.6, medida
 label('Bahía privada · compras directo al ascensor', [15.2, FLOOR+1.9, 8], 0.6, medidas, true);
 label('Retiro posterior 5.00 m', [47.5, -1.6, 10], 0.6, medidas);
 label('Andén de descarga 1.20 m', [30.5, -3.0, 16.2], 0.6, medidas);
+label('Contenedor a 1 m del andén · unión con tablas', [30, -2.2, 18.6], 0.6, medidas, true);
+label('Portón 4x4 · 3.00 × 2.50 m (según plano A-3)', [21.5, FLOOR+2.9, 15.6], 0.6, medidas, true);
 label('Alero +4.30 · Cumbrero +5.70 (8.00 / 9.40 m del piso)', [(GN.x0+GN.x1)/2, 6.7, -1.2], 0.7, medidas);
 if (OPT2) label('Mampostería 3.80 m (muro 1.80 + bloque 2.00)', [(GN.x0+GN.x1)/2, FLOOR+4.3, 15.9], 0.6, medidas);
 label('Portón 5.00 × 4.40 m', [30, 1.2, 15.9], 0.55, medidas);
