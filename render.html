@@ -156,7 +156,7 @@ const EAVE = 4.30, RIDGE = 5.72;        // galpón: alero 8.00 y cumbrero 9.40 s
 // Opción 2 = cotas de la lámina A-2: entrepisos uniformes de 3.40 m
 const LV = OPT2 ? [-3.70, 0.13, 3.53, 6.93, 10.33] : [-3.70, 0, 3.40, 6.20, 9.00];
 const Y0=LV[0], Y1=LV[1], Y2=LV[2], Y3=LV[3], Y4=LV[4];
-const RAMP = { z0:15, z1:20, xTop:1.0, xBot:28.4 };
+const RAMP = { z0:15, z1:20, xTop:1.0, xBot:32.0 };   // pendiente hasta 1 m antes del portón (x33)
 const T = 0.2;
 // Núcleo panorámico: gradas que ENVUELVEN al ascensor de vidrio.
 // Puerta hacia el CENTRO (sur). El tramo de subida inicia en la franja oeste
@@ -413,7 +413,8 @@ function bar(a, b, s, mat, parent) {
   (parent || structure).add(m);
 }
 const V = (x,y,z) => new THREE.Vector3(x,y,z);
-const rampY = x => Math.max(DOCK, ST - 0.187 * (x - RAMP.xTop));
+const RSLOPE = (ST - DOCK) / (RAMP.xBot - RAMP.xTop);   // 4.90 / 31 ≈ 0.158 (≈16 %)
+const rampY = x => Math.max(DOCK, ST - RSLOPE * (x - RAMP.xTop));
 
 function label(text, at, s, parent, accent) {
   const fs=46, pad=22;
@@ -452,13 +453,13 @@ quad([[45,FLOOR+0.02,0],[45,FLOOR+0.02,20],[50,FLOOR+0.02,20],[50,FLOOR+0.02,0]]
 box(3, 3.9, 15, 1.5, ST-1.95, 7.5, M.concrete, world);
 quad([[0,0.03,0],[0,0.03,15],[3,0.03,15],[3,0.03,0]], M.apron, 1.5, 6);
 
-/* ============ RAMPA 18 % HASTA ANDÉN -4.90 ============ */
+/* ============ RAMPA ≈16 % HASTA 1 m ANTES DEL PORTÓN (−4.90) ============ */
 quad([[0,ST,RAMP.z0],[0,ST,RAMP.z1],[RAMP.xTop,ST,RAMP.z1],[RAMP.xTop,ST,RAMP.z0]], M.apron, 1, 1);
 quad([[RAMP.xTop,ST,RAMP.z0],[RAMP.xTop,ST,RAMP.z1],[RAMP.xBot,DOCK,RAMP.z1],[RAMP.xBot,DOCK,RAMP.z0]], M.ramp, 1, 9);
-quad([[RAMP.xBot,DOCK+0.02,15],[RAMP.xBot,DOCK+0.02,20],[33,DOCK+0.02,20],[33,DOCK+0.02,15]], M.apron, 2, 2);
+quad([[RAMP.xBot,DOCK+0.02,15],[RAMP.xBot,DOCK+0.02,20],[33,DOCK+0.02,20],[33,DOCK+0.02,15]], M.apron, 1, 2);  // 1 m plano
 bar(V(RAMP.xTop, ST+0.18, RAMP.z1-0.12), V(RAMP.xBot, DOCK+0.18, RAMP.z1-0.12), 0.24, M.concrete, world);
-bar(V(RAMP.xTop, ST+0.18, RAMP.z0+0.1), V(21.6, FLOOR+0.18, RAMP.z0+0.1), 0.24, M.concrete, world);
-box(33-21.6, FLOOR-DOCK+0.15, 0.26, (21.6+33)/2, (FLOOR+DOCK)/2, 15.03, M.concrete, world);
+bar(V(RAMP.xTop, ST+0.18, RAMP.z0+0.1), V(RAMP.xBot, DOCK+0.18, RAMP.z0+0.1), 0.24, M.concrete, world);
+box(33-RAMP.xBot, FLOOR-DOCK+0.15, 0.26, (RAMP.xBot+33)/2, (FLOOR+DOCK)/2, 15.03, M.concrete, world);
 box(0.26, FLOOR-DOCK+0.15, 5, 33.03, (FLOOR+DOCK)/2, 17.5, M.concrete, world);
 
 /* ============ CERRAMIENTOS ============ */
@@ -1009,17 +1010,26 @@ galpon(GE.x0, GE.x1, GE.z0, GE.z1, {
    La inclinación se toma como el promedio de la rampa entre eje delantero y
    trasero, de modo que en el andén (piso plano) queda casi nivelado y el piso
    del contenedor cae en −3.70, a 1 m del portón (se une con tablas). */
+/* Camión articulado con contenedor 40' HQ — dimensiones estándar:
+   Contenedor 40HQ: 12.19 m largo × 2.44 m ancho × 2.90 m alto (High Cube).
+   Conjunto tractor + chasis + contenedor ≈ 16.5 m de largo total.
+   Origen local = eje trasero (contacto piso); largo a lo largo de X;
+   trasera del contenedor hacia +x, cabina hacia -x. Piso del cajón a 1.20 m. */
+const CONT = { L: 12.19, W: 2.44, H: 2.90, floor: 1.20 };
 const truck = new THREE.Group();
 (function(){
-  box(13.0, 0.3, 2.35, -5.3, 1.0, 0, M.frame, truck);            // chasis
-  box(2.5, 2.6, 12.0, -5.5, 2.5, 0, M.containerB, truck);        // contenedor 40HQ (~12 m)
-  box(2.44, 2.55, 0.06, 0.55, 2.5, 0, M.frame, truck);           // puertas traseras
-  box(2.3, 2.0, 2.45, -12.6, 2.2, 0, M.cabRed, truck);           // cabina
-  box(0.4, 0.7, 2.3, -13.7, 1.5, 0, M.cabRed, truck);
-  box(2.15, 0.85, 2.32, -13.55, 2.35, 0, M.glass, truck, false); // parabrisas
-  [0.8,-0.8].forEach(z => box(0.12, 1.0, 0.12, -9.5, 0.7, z, M.frame, truck, false)); // patas de apoyo
+  const rearX = 0.6;                                  // trasera del contenedor (local x)
+  const cxc = rearX - CONT.L/2;                       // centro del contenedor
+  box(13.6, 0.32, 2.4, cxc-0.3, CONT.floor-0.16, 0, M.frame, truck);        // chasis
+  box(CONT.L, CONT.H, CONT.W, cxc, CONT.floor+CONT.H/2, 0, M.containerB, truck);  // contenedor 40HQ
+  box(0.08, CONT.H-0.1, CONT.W, rearX+0.04, CONT.floor+CONT.H/2, 0, M.frame, truck); // puertas traseras
+  const cabX = rearX - CONT.L - 2.0;                  // cabina delante del contenedor
+  box(2.2, 2.7, 2.45, cabX, CONT.floor+1.35, 0, M.cabRed, truck);           // cabina
+  box(0.5, 1.1, 2.3, cabX-1.1, CONT.floor+0.55, 0, M.cabRed, truck);        // trompa
+  box(0.06, 0.95, 2.25, cabX-1.15, CONT.floor+1.6, 0, M.glass, truck, false); // parabrisas
+  [0.85,-0.85].forEach(z => box(0.12, CONT.floor, 0.12, cxc-2.5, CONT.floor/2, z, M.frame, truck, false)); // patas
   const wg = new THREE.CylinderGeometry(0.52, 0.52, 0.42, 16);
-  [0, -1.3, -11.2, -12.6].forEach(px => [1.05,-1.05].forEach(pz => {
+  [-0.5, -1.9, cabX+0.9, cabX-0.4, cabX+2.0].forEach(px => [1.05,-1.05].forEach(pz => {
     const w = new THREE.Mesh(wg, M.tire);
     w.rotation.z = Math.PI/2; w.position.set(px, 0.52, pz);
     w.castShadow = true; truck.add(w);
@@ -1027,10 +1037,10 @@ const truck = new THREE.Group();
   world.add(truck);
 })();
 function placeTruck(s) {
-  const rx = 9 + (31.5 - 9) * s;                 // eje trasero: 0 = arriba (calle) · 1 = andén
+  const rx = 8 + (31.2 - 8) * s;                 // eje trasero: 0 = arriba (calle) · 1 = andén (contenedor ~1 m del portón)
   const ry = rampY(rx);
-  const fx = rx - 10, fy = rampY(fx);
-  const tilt = -Math.atan2(fy - ry, 10);         // promedio de pendiente entre ejes
+  const fx = rx - 12, fy = rampY(fx);
+  const tilt = -Math.atan2(fy - ry, 12);         // inclinación = promedio de pendiente entre ejes
   truck.position.set(rx, ry, 17.5);
   truck.rotation.z = tilt;
 }
@@ -1089,12 +1099,12 @@ label('TERRENO 1000 m² · frente 20 m × fondo 50 m', [25, 17.5, 10], 1.1, medi
 label(OPT2 ? 'EDIFICIO 15 × 15 m · 225 m² por planta · entrepisos 3.40 m' : 'EDIFICIO 15 × 12 m · 180 m² por planta', [EXC, Y4+5.5, 7.5], 1.0, medidas, true);
 label(OPT2 ? 'GALPÓN NUEVO 15 × 15 m · 225 m²' : 'GALPÓN NUEVO 15 × 18 m · 270 m²', [(GN.x0+GN.x1)/2, 7.6, 7.5], 1.0, medidas, true);
 label('GALPÓN EXISTENTE 20 × 12 m · 240 m²', [39, 7.9, 10], 1.0, medidas, true);
-label('RAMPA 5.00 m ancho · 18 % · largo 27.4 m', [12, 1.6, 17.5], 0.8, medidas, true);
+label('RAMPA 5.00 m ancho · ≈16 % · largo 31 m (1 m plano)', [12, 1.6, 17.5], 0.8, medidas, true);
 label('Retiro frontal 3.00 m · parqueo en paralelo', [1.5, 2.7, 8], 0.6, medidas, true);
 label('Bahía privada · compras directo al ascensor', [15.2, FLOOR+1.9, 8], 0.6, medidas, true);
 label('Retiro posterior 5.00 m', [47.5, -1.6, 10], 0.6, medidas);
 label('Andén de descarga 1.20 m', [30.5, -3.0, 16.2], 0.6, medidas);
-label('Contenedor a 1 m del andén · unión con tablas', [30, -2.2, 18.6], 0.6, medidas, true);
+label('Contenedor 40HQ (12.19 m) a 1 m · unión con tablas', [29, -2.0, 19.0], 0.6, medidas, true);
 label('Portón 4x4 · 3.00 × 2.50 m (según plano A-3)', [21.5, FLOOR+2.9, 15.6], 0.6, medidas, true);
 label('Alero +4.30 · Cumbrero +5.70 (8.00 / 9.40 m del piso)', [(GN.x0+GN.x1)/2, 6.7, -1.2], 0.7, medidas);
 if (OPT2) label('Mampostería 3.80 m (muro 1.80 + bloque 2.00)', [(GN.x0+GN.x1)/2, FLOOR+4.3, 15.9], 0.6, medidas);
