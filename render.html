@@ -359,6 +359,9 @@ const M = {
   cabRed:   new THREE.MeshStandardMaterial({ color:0x9e2b25, roughness:0.4, metalness:0.3 }),
   containerB:new THREE.MeshStandardMaterial({ color:0x2b5d8a, roughness:0.6, metalness:0.4 }),
   tire:     new THREE.MeshStandardMaterial({ color:0x1c1e20, roughness:0.95 }),
+  carW:     new THREE.MeshStandardMaterial({ color:0xe9ecef, roughness:0.35, metalness:0.45 }),
+  carS:     new THREE.MeshStandardMaterial({ color:0x8b95a2, roughness:0.35, metalness:0.55 }),
+  paint2:   new THREE.MeshStandardMaterial({ color:0xf2c94c, roughness:0.5 }),   // demarcación de piso
 };
 
 // ---------- Helpers ----------
@@ -777,9 +780,20 @@ function chairOf(x, z, ry, parent) {
   counter(9.4, 0.7, 3.0, 0.65);
   counter(12.1, 2.6, 0.6, 3.8);
   box(1.8,0.1,0.9, 10.6, y+0.78, 3.4, M.wood, g);         // isla
-  // ---- DORM 3 (x8.9-12.5 · z5.2-10.0) ----
-  bed(10.6, 7.6, 1.5, 2.0, 0);
-  box(1.2,0.5,0.55, 10.6, y+0.25, 9.6, M.fixture, g, false);
+  // ---- DORM 3 (interior, iluminado por patio de luz) ----
+  bed(10.0, 7.4, 1.5, 2.0, 0);
+  box(1.0,0.5,0.5, 10.0, y+0.25, 5.7, M.fixture, g, false);
+  // ---- PATIO DE LUZ (ducto de iluminación/ventilación para el dorm. interior) ----
+  (function(){
+    const px0=11.0, px1=12.55, pz0=5.6, pz1=8.6, pyT=Y4+0.9;
+    box(0.1, pyT-y, pz1-pz0, px0, (y+pyT)/2, (pz0+pz1)/2, M.paintInt, g);           // muro oeste
+    box(0.1, 1.5, 2.4, px0, y+1.35, (pz0+pz1)/2, M.glass, g, false);               // ventana a Dorm.3
+    box(px1-px0, pyT-y, 0.1, (px0+px1)/2, (y+pyT)/2, pz0, M.paintInt, g);
+    box(px1-px0, pyT-y, 0.1, (px0+px1)/2, (y+pyT)/2, pz1, M.paintInt, g);
+    const f = new THREE.Mesh(new THREE.PlaneGeometry(px1-px0-0.08, pz1-pz0-0.08), M.skylight);
+    f.rotation.x = -Math.PI/2; f.position.set((px0+px1)/2, y+0.06, (pz0+pz1)/2); g.add(f);
+    label('Patio de luz', [(px0+px1)/2, y+2.0, (pz0+pz1)/2], 0.4, g);
+  })();
   // ---- DORM 2 (x8.9-12.5 · z10.4-14.8) ----
   bed(10.6, 13.4, 1.5, 2.0, 0);
   box(1.2,0.5,0.55, 10.6, y+0.25, 11.0, M.fixture, g, false);
@@ -812,6 +826,9 @@ function chairOf(x, z, ry, parent) {
     box(0.7, 0.5, 0.7, p[0], y+0.25, p[1], M.wood, g, false);
     box(0.55, 0.7, 0.55, p[0], y+0.85, p[1], M.plant, g, false);
   });
+  // claraboya (lucernario) del patio de luz
+  box(1.85, 0.65, 3.4, 11.8, y+0.33, 7.1, M.frame, g);
+  box(1.65, 0.05, 3.2, 11.8, y+0.68, 7.1, M.skylight, g, false);
   label('Terraza ≈ ' + (OPT2?'205':'158') + ' m² · teja española', [EXC-1, y+2.2, 7.5], 0.6, g);
 })();
 
@@ -1003,6 +1020,39 @@ galpon(GE.x0, GE.x1, GE.z0, GE.z1, {
   world.add(outer);
 })();
 
+/* ============ PARQUEO (esquema híbrido) ============ */
+function parkedCar(x, y, z, rot, col) {
+  const c = new THREE.Group();
+  box(1.82, 0.5, 4.2, 0, 0.55, 0, col, c);              // carrocería
+  box(1.72, 0.6, 2.3, 0, 1.05, -0.15, col, c);          // cabina
+  box(1.66, 0.5, 2.1, 0, 1.06, -0.15, M.glass, c, false);
+  box(1.5, 0.06, 0.5, 0, 0.8, 2.0, M.frame, c, false);  // capó
+  const wg = new THREE.CylinderGeometry(0.33, 0.33, 0.22, 14);
+  [[0.83,1.3],[-0.83,1.3],[0.83,-1.3],[-0.83,-1.3]].forEach(p => {
+    const w = new THREE.Mesh(wg, M.tire);
+    w.rotation.z = Math.PI/2; w.position.set(p[0], 0.33, p[1]);
+    w.castShadow = true; c.add(w);
+  });
+  c.position.set(x, y, z); c.rotation.y = rot || 0;
+  world.add(c);
+  return c;
+}
+// -- Frontal: 2 autos en paralelo (nivel calle) + portón corredizo en la línea de fábrica --
+[[0,3.4],[0,10.6],[0,14.6]].forEach(p => box(0.22, 2.3, 0.22, p[0], 1.15, p[1], M.frame, world));  // postes
+(function(){                                             // hoja corrediza (reja) z 3.6–10.4
+  const rj = new THREE.Mesh(new THREE.PlaneGeometry(6.8, 1.9), M.reja);
+  rj.rotation.y = Math.PI/2; rj.position.set(0, 1.0, 7.0); world.add(rj);
+  box(0.14, 0.16, 7.2, 0, 2.05, 7.0, M.frame, world);   // riel superior
+})();
+box(0.14, 0.14, 3.0, 0, 2.05, 1.9, M.frame, world);     // riel del vano peatonal
+parkedCar(1.55, 0.05, 3.4, 0, M.carW);                  // auto 1 (de lado, paralelo a la calle)
+parkedCar(1.55, 0.05, 12.6, 0, M.carS);                 // auto 2 (visitas/showroom)
+// -- Interior: bahía privada junto al ascensor (nivel −3.70), compras directo al ascensor --
+[[13.0,5.4],[13.0,9.6],[17.4,5.4],[17.4,9.6]].forEach(p =>
+  box(0.1, 0.02, 4.2, p[0], FLOOR+0.04, 7.5, M.paint2, world, false));   // demarcación bahía
+box(4.4, 0.02, 0.1, 15.2, FLOOR+0.04, 5.4, M.paint2, world, false);
+parkedCar(15.5, FLOOR+0.05, 7.7, 0, M.carS);            // auto residente
+
 /* ============ ÁRBOLES ============ */
 function tree(x, y, z, s) {
   const g = new THREE.Group();
@@ -1022,7 +1072,8 @@ label(OPT2 ? 'EDIFICIO 15 × 15 m · 225 m² por planta · entrepisos 3.40 m' : 
 label(OPT2 ? 'GALPÓN NUEVO 15 × 15 m · 225 m²' : 'GALPÓN NUEVO 15 × 18 m · 270 m²', [(GN.x0+GN.x1)/2, 7.6, 7.5], 1.0, medidas, true);
 label('GALPÓN EXISTENTE 20 × 12 m · 240 m²', [39, 7.9, 10], 1.0, medidas, true);
 label('RAMPA 5.00 m ancho · 18 % · largo 27.4 m', [12, 1.6, 17.5], 0.8, medidas, true);
-label('Retiro frontal 3.00 m', [1.5, 0.7, 4], 0.55, medidas);
+label('Retiro frontal 3.00 m · parqueo en paralelo', [1.5, 2.7, 8], 0.6, medidas, true);
+label('Bahía privada · compras directo al ascensor', [15.2, FLOOR+1.9, 8], 0.6, medidas, true);
 label('Retiro posterior 5.00 m', [47.5, -1.6, 10], 0.6, medidas);
 label('Andén de descarga 1.20 m', [30.5, -3.0, 16.2], 0.6, medidas);
 label('Alero +4.30 · Cumbrero +5.70 (8.00 / 9.40 m del piso)', [(GN.x0+GN.x1)/2, 6.7, -1.2], 0.7, medidas);
