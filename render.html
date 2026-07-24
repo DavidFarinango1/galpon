@@ -110,7 +110,12 @@
   <h3>Iluminación</h3>
   <div class="sun-label"><span>☀ Hora del día</span><span id="sunTime">10:30</span></div>
   <input type="range" id="sunSlider" min="7" max="17.5" step="0.1" value="10.5">
-  <h3 style="margin-top:4px">Camión en la rampa</h3>
+  <h3 style="margin-top:4px">Vehículo en la rampa</h3>
+  <div id="vehBtns" style="display:flex; gap:4px; margin-bottom:6px;">
+    <button class="btn on" style="flex:1; padding:0 3px; justify-content:center;">40HQ</button>
+    <button class="btn" style="flex:1; padding:0 3px; justify-content:center;">NMR</button>
+    <button class="btn" style="flex:1; padding:0 3px; justify-content:center;">4x4</button>
+  </div>
   <div class="sun-label"><span>🚛 Posición</span><span id="truckPos">Andén</span></div>
   <input type="range" id="truckSlider" min="0" max="1" step="0.01" value="1">
   <label class="row">Animar entrada / salida <input type="checkbox" id="chkTruck"></label>
@@ -1004,45 +1009,76 @@ galpon(GE.x0, GE.x1, GE.z0, GE.z1, {
   }
 })();
 
-/* ============ CAMIÓN 40HQ EN LA RAMPA (con movimiento) ============
-   Origen local en el eje trasero (contacto con el piso), el cuerpo se extiende
-   hacia -x (cabina al frente, trasera del contenedor hacia +x = andén).
-   La inclinación se toma como el promedio de la rampa entre eje delantero y
-   trasero, de modo que en el andén (piso plano) queda casi nivelado y el piso
-   del contenedor cae en −3.70, a 1 m del portón (se une con tablas). */
-/* Camión articulado con contenedor 40' HQ — dimensiones estándar:
-   Contenedor 40HQ: 12.19 m largo × 2.44 m ancho × 2.90 m alto (High Cube).
-   Conjunto tractor + chasis + contenedor ≈ 16.5 m de largo total.
-   Origen local = eje trasero (contacto piso); largo a lo largo de X;
-   trasera del contenedor hacia +x, cabina hacia -x. Piso del cajón a 1.20 m. */
-const CONT = { L: 12.19, W: 2.44, H: 2.90, floor: 1.20 };
-const truck = new THREE.Group();
-(function(){
-  const rearX = 0.6;                                  // trasera del contenedor (local x)
-  const cxc = rearX - CONT.L/2;                       // centro del contenedor
-  box(13.6, 0.32, 2.4, cxc-0.3, CONT.floor-0.16, 0, M.frame, truck);        // chasis
-  box(CONT.L, CONT.H, CONT.W, cxc, CONT.floor+CONT.H/2, 0, M.containerB, truck);  // contenedor 40HQ
-  box(0.08, CONT.H-0.1, CONT.W, rearX+0.04, CONT.floor+CONT.H/2, 0, M.frame, truck); // puertas traseras
-  const cabX = rearX - CONT.L - 2.0;                  // cabina delante del contenedor
-  box(2.2, 2.7, 2.45, cabX, CONT.floor+1.35, 0, M.cabRed, truck);           // cabina
-  box(0.5, 1.1, 2.3, cabX-1.1, CONT.floor+0.55, 0, M.cabRed, truck);        // trompa
-  box(0.06, 0.95, 2.25, cabX-1.15, CONT.floor+1.6, 0, M.glass, truck, false); // parabrisas
-  [0.85,-0.85].forEach(z => box(0.12, CONT.floor, 0.12, cxc-2.5, CONT.floor/2, z, M.frame, truck, false)); // patas
-  const wg = new THREE.CylinderGeometry(0.52, 0.52, 0.42, 16);
-  [-0.5, -1.9, cabX+0.9, cabX-0.4, cabX+2.0].forEach(px => [1.05,-1.05].forEach(pz => {
-    const w = new THREE.Mesh(wg, M.tire);
-    w.rotation.z = Math.PI/2; w.position.set(px, 0.52, pz);
-    w.castShadow = true; truck.add(w);
-  }));
-  world.add(truck);
-})();
+/* ============ VEHÍCULOS EN LA RAMPA (3 opciones intercambiables) ============
+   Cada vehículo: origen local en el eje trasero (contacto con el piso), largo
+   a lo largo de X, trasera hacia +x (andén), frente hacia -x. La inclinación se
+   toma como el promedio de la rampa entre eje delantero y trasero. */
+let truckS = 1, truckPlaying = false, truckDir = -1, curVeh = 0;
+function wheel(r, x, z, g) {
+  const w = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.3, 14), M.tire);
+  w.rotation.z = Math.PI/2; w.position.set(x, r, z); w.castShadow = true; g.add(w);
+}
+// --- 1) Tráiler + contenedor 40' HQ (12.19 × 2.44 × 2.90 m; conjunto ≈16.5 m) ---
+const v40 = new THREE.Group();
+(function(g){
+  const backX=0.8, L=12.19, W=2.44, H=2.90, fl=1.20, cxc=backX-L/2;
+  box(13.8, 0.32, 2.4, cxc-0.4, fl-0.16, 0, M.frame, g);
+  box(L, H, W, cxc, fl+H/2, 0, M.containerB, g);
+  box(0.08, H-0.1, W, backX+0.04, fl+H/2, 0, M.frame, g);
+  const cabX = backX-L-2.2;
+  box(2.2, 2.7, 2.45, cabX, fl+1.35, 0, M.cabRed, g);
+  box(0.5, 1.1, 2.3, cabX-1.1, fl+0.55, 0, M.cabRed, g);
+  box(0.06, 0.95, 2.25, cabX-1.15, fl+1.6, 0, M.glass, g, false);
+  [0.85,-0.85].forEach(z=>box(0.12, fl, 0.12, cxc-3, fl/2, z, M.frame, g, false));
+  [-0.6,-1.95, cabX+0.9, cabX-0.5].forEach(px=>[1.05,-1.05].forEach(pz=>wheel(0.52,px,pz,g)));
+  world.add(g);
+})(v40);
+// --- 2) Camión Chevrolet NMR 613 (6.03 × 1.855 × 2.16 m; entre-ejes 3.345) ---
+const vnmr = new THREE.Group();
+(function(g){
+  const rearOv=1.575, wb=3.345, frontOv=1.11, W=1.855, cab=1.65;
+  const backX=rearOv, frontEnd=-(wb+frontOv), cabBack=frontEnd+cab;
+  box(6.0, 0.22, W, backX-3.0, 0.62, 0, M.frame, g);                     // chasis
+  box(cab, 1.9, W, frontEnd+cab/2, 1.1, 0, M.cabRed, g);                 // cabina cab-over
+  box(0.05, 0.72, W-0.06, frontEnd+0.04, 1.35, 0, M.glass, g, false);    // parabrisas
+  const bf=0.9, bh=2.16-bf;
+  box(backX-cabBack, bh, W, (cabBack+backX)/2, bf+bh/2, 0, M.carW, g);   // furgón
+  [0,-wb].forEach(px=>[0.72,-0.72].forEach(pz=>wheel(0.42,px,pz,g)));
+  world.add(g);
+})(vnmr);
+// --- 3) Camioneta 4x4 doble cabina (≈5.33 × 1.9 × 1.85 m; entre-ejes 3.1) ---
+const v4x4 = new THREE.Group();
+(function(g){
+  const rearOv=1.1, wb=3.1, frontOv=1.13, W=1.9;
+  const backX=rearOv, frontEnd=-(wb+frontOv);
+  box(5.3, 0.45, W, backX-2.65, 0.62, 0, M.carS, g);                     // cuerpo bajo
+  box(1.5, 0.55, W-0.02, -3.35, 1.05, 0, M.carS, g);                     // capó
+  box(2.0, 0.95, W, -1.75, 1.5, 0, M.carS, g);                           // cabina doble
+  box(1.9, 0.7, W-0.08, -1.75, 1.55, 0, M.glass, g, false);
+  box(2.5, 0.5, W, 0.15, 1.05, 0, M.carS, g);                           // batea
+  box(2.3, 0.28, W-0.2, 0.15, 0.9, 0, M.frame, g, false);               // piso batea
+  [0,-wb].forEach(px=>[0.82,-0.82].forEach(pz=>wheel(0.42,px,pz,g)));
+  world.add(g);
+})(v4x4);
+const VEH = [
+  { g:v40,  wb:13.5, dockRx:31.2, name:'40HQ' },
+  { g:vnmr, wb:3.345, dockRx:30.4, name:'NMR 613' },
+  { g:v4x4, wb:3.1,  dockRx:30.9, name:'4x4' },
+];
+VEH.forEach((v,k)=> v.g.visible = k===0);
 function placeTruck(s) {
-  const rx = 8 + (31.2 - 8) * s;                 // eje trasero: 0 = arriba (calle) · 1 = andén (contenedor ~1 m del portón)
+  const v = VEH[curVeh];
+  const rx = 8 + (v.dockRx - 8) * s;             // eje trasero: 0 = calle · 1 = andén
   const ry = rampY(rx);
-  const fx = rx - 12, fy = rampY(fx);
-  const tilt = -Math.atan2(fy - ry, 12);         // inclinación = promedio de pendiente entre ejes
-  truck.position.set(rx, ry, 17.5);
-  truck.rotation.z = tilt;
+  const tilt = -Math.atan2(rampY(rx - v.wb) - ry, v.wb);
+  v.g.position.set(rx, ry, 17.5);
+  v.g.rotation.z = tilt;
+}
+function selectVeh(i) {
+  curVeh = i;
+  VEH.forEach((v,k)=> v.g.visible = k===i);
+  placeTruck(truckS);
+  document.querySelectorAll('#vehBtns button').forEach((b,k)=> b.classList.toggle('on', k===i));
 }
 placeTruck(1);
 // tablas puente sobre el hueco de ~1 m entre la trasera del contenedor y el andén
@@ -1173,7 +1209,7 @@ document.getElementById('chkStructEdi').addEventListener('change', e => {
 });
 document.getElementById('chkRotate').addEventListener('change', e => { controls.autoRotate = e.target.checked; controls.autoRotateSpeed = 0.9; });
 document.getElementById('chkMedidas').addEventListener('change', e => { medidas.visible = e.target.checked; });
-let truckS = 1, truckPlaying = false, truckDir = -1;
+document.querySelectorAll('#vehBtns button').forEach((b,i) => b.addEventListener('click', () => selectVeh(i)));
 const truckSlider = document.getElementById('truckSlider');
 const truckPosLbl = document.getElementById('truckPos');
 function truckLabel(s){ truckPosLbl.textContent = s > 0.96 ? 'Andén' : s < 0.04 ? 'Calle' : 'En rampa'; }
