@@ -1018,52 +1018,55 @@ function wheel(r, x, z, g) {
   const w = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.3, 14), M.tire);
   w.rotation.z = Math.PI/2; w.position.set(x, r, z); w.castShadow = true; g.add(w);
 }
-// --- 1) Tráiler + contenedor 40' HQ (12.19 × 2.44 × 2.90 m; conjunto ≈16.5 m) ---
+// --- 1) Tractocamión + contenedor 40' HQ (contenedor 12.19 × 2.44 × 2.90 m;
+//        conjunto tractor+semirremolque ≈16.5 m de largo total) ---
 const v40 = new THREE.Group();
 (function(g){
   const backX=0.8, L=12.19, W=2.44, H=2.90, fl=1.20, cxc=backX-L/2;
-  box(13.8, 0.32, 2.4, cxc-0.4, fl-0.16, 0, M.frame, g);
-  box(L, H, W, cxc, fl+H/2, 0, M.containerB, g);
-  box(0.08, H-0.1, W, backX+0.04, fl+H/2, 0, M.frame, g);
-  const cabX = backX-L-2.2;
-  box(2.2, 2.7, 2.45, cabX, fl+1.35, 0, M.cabRed, g);
-  box(0.5, 1.1, 2.3, cabX-1.1, fl+0.55, 0, M.cabRed, g);
-  box(0.06, 0.95, 2.25, cabX-1.15, fl+1.6, 0, M.glass, g, false);
+  box(15.4, 0.32, 2.44, backX-7.9, fl-0.18, 0, M.frame, g);                 // chasis del conjunto
+  box(L, H, W, cxc, fl+H/2, 0, M.containerB, g);                           // contenedor 40HQ
+  box(0.08, H-0.1, W, backX+0.04, fl+H/2, 0, M.frame, g);                  // puertas
+  const cabX = -14.5;                                                       // cabina del tractor
+  box(2.4, 2.9, 2.5, cabX, fl+1.45, 0, M.cabRed, g);
+  box(0.6, 1.2, 2.35, cabX-1.4, fl+0.6, 0, M.cabRed, g);                   // trompa
+  box(0.06, 1.0, 2.3, cabX-1.45, fl+1.7, 0, M.glass, g, false);           // parabrisas
   [0.85,-0.85].forEach(z=>box(0.12, fl, 0.12, cxc-3, fl/2, z, M.frame, g, false));
-  [-0.6,-1.95, cabX+0.9, cabX-0.5].forEach(px=>[1.05,-1.05].forEach(pz=>wheel(0.52,px,pz,g)));
+  [-0.6, -1.95, -11.8, -13.1, -15.3].forEach(px=>[1.05,-1.05].forEach(pz=>wheel(0.52,px,pz,g)));
   world.add(g);
 })(v40);
-// --- 2) Camión Chevrolet NMR 613 (6.03 × 1.855 × 2.16 m; entre-ejes 3.345) ---
+// --- 2) Camión Chevrolet NMR 613 (6.03 largo × 1.855 ancho × 2.16 alto m;
+//        entre-ejes 3.345 · voladizos 1.11 y 1.575 · cabina 1.65) ---
 const vnmr = new THREE.Group();
 (function(g){
-  const rearOv=1.575, wb=3.345, frontOv=1.11, W=1.855, cab=1.65;
+  const rearOv=1.575, wb=3.345, frontOv=1.11, W=1.855, cab=1.65, TH=2.16;
   const backX=rearOv, frontEnd=-(wb+frontOv), cabBack=frontEnd+cab;
-  box(6.0, 0.22, W, backX-3.0, 0.62, 0, M.frame, g);                     // chasis
-  box(cab, 1.9, W, frontEnd+cab/2, 1.1, 0, M.cabRed, g);                 // cabina cab-over
-  box(0.05, 0.72, W-0.06, frontEnd+0.04, 1.35, 0, M.glass, g, false);    // parabrisas
-  const bf=0.9, bh=2.16-bf;
-  box(backX-cabBack, bh, W, (cabBack+backX)/2, bf+bh/2, 0, M.carW, g);   // furgón
-  [0,-wb].forEach(px=>[0.72,-0.72].forEach(pz=>wheel(0.42,px,pz,g)));
+  box(6.03, 0.22, W, backX-3.015, 0.62, 0, M.frame, g);                  // chasis (largo total)
+  box(cab, TH-0.55, W, frontEnd+cab/2, 0.55+(TH-0.55)/2, 0, M.cabRed, g);// cabina cab-over
+  box(0.05, 0.7, W-0.06, frontEnd+0.04, 1.55, 0, M.glass, g, false);     // parabrisas
+  const bf=0.85, bh=TH-bf;
+  box(backX-cabBack-0.05, bh, W, (cabBack+backX)/2, bf+bh/2, 0, M.carW, g); // furgón
+  [0,-wb].forEach(px=>[0.74,-0.74].forEach(pz=>wheel(0.43,px,pz,g)));
   world.add(g);
 })(vnmr);
-// --- 3) Camioneta 4x4 doble cabina (≈5.33 × 1.9 × 1.85 m; entre-ejes 3.1) ---
+// --- 3) Camioneta 4x4 doble cabina tipo Hilux (5.33 largo × 1.855 ancho ×
+//        1.82 alto m; entre-ejes 3.085) ---
 const v4x4 = new THREE.Group();
 (function(g){
-  const rearOv=1.1, wb=3.1, frontOv=1.13, W=1.9;
+  const rearOv=1.13, wb=3.085, frontOv=1.11, W=1.855;
   const backX=rearOv, frontEnd=-(wb+frontOv);
-  box(5.3, 0.45, W, backX-2.65, 0.62, 0, M.carS, g);                     // cuerpo bajo
-  box(1.5, 0.55, W-0.02, -3.35, 1.05, 0, M.carS, g);                     // capó
-  box(2.0, 0.95, W, -1.75, 1.5, 0, M.carS, g);                           // cabina doble
-  box(1.9, 0.7, W-0.08, -1.75, 1.55, 0, M.glass, g, false);
-  box(2.5, 0.5, W, 0.15, 1.05, 0, M.carS, g);                           // batea
-  box(2.3, 0.28, W-0.2, 0.15, 0.9, 0, M.frame, g, false);               // piso batea
-  [0,-wb].forEach(px=>[0.82,-0.82].forEach(pz=>wheel(0.42,px,pz,g)));
+  box(5.33, 0.4, W, backX-2.665, 0.62, 0, M.carS, g);                    // cuerpo
+  box(1.35, 0.5, W-0.03, -3.4, 1.02, 0, M.carS, g);                      // capó
+  box(2.05, 0.9, W, -1.85, 1.42, 0, M.carS, g);                          // cabina doble
+  box(1.95, 0.66, W-0.1, -1.85, 1.46, 0, M.glass, g, false);            // vidrios
+  box(2.35, 0.52, W, 0.2, 1.02, 0, M.carS, g);                          // batea (paredes)
+  box(2.2, 0.26, W-0.18, 0.2, 0.86, 0, M.frame, g, false);              // piso batea
+  [0,-wb].forEach(px=>[0.8,-0.8].forEach(pz=>wheel(0.4,px,pz,g)));
   world.add(g);
 })(v4x4);
 const VEH = [
-  { g:v40,  wb:13.5, dockRx:31.2, name:'40HQ' },
+  { g:v40,  wb:14.7, dockRx:31.2, name:'40HQ' },
   { g:vnmr, wb:3.345, dockRx:30.4, name:'NMR 613' },
-  { g:v4x4, wb:3.1,  dockRx:30.9, name:'4x4' },
+  { g:v4x4, wb:3.085, dockRx:30.9, name:'4x4' },
 ];
 VEH.forEach((v,k)=> v.g.visible = k===0);
 function placeTruck(s) {
