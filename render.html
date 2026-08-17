@@ -155,7 +155,8 @@ optBtn.addEventListener('click', () => location.href = OPT2 ? 'render.html' : 'r
 
 const FLOOR = -3.70, DOCK = -4.90, ST = 0;
 const LOT_W = 20;
-const EDI = { x0:3, x1:15+DX, z0:0, z1:15 };
+const RET = 4.5;                                 // retiro frontal (antes 3.00 m)
+const EDI = { x0:RET, x1:15+DX, z0:0, z1:15 };   // OPT2: 13.50 m de fondo × 15 de ancho
 const GN  = { x0:15+DX, x1:33, z0:0, z1:15 };
 const GE  = { x0:33, x1:45, z0:0, z1:20 };
 const EAVE = 4.30, RIDGE = 5.72;        // galpón: alero 8.00 y cumbrero 9.40 sobre el piso -3.70
@@ -382,7 +383,7 @@ const medidas = new THREE.Group(); scene.add(medidas);
 const ediLevels = LV.map(() => { const g = new THREE.Group(); world.add(g); return g; });
 let roofTerraza = new THREE.Group(); ediLevels[4].add(roofTerraza);
 const structEdi = new THREE.Group(); structEdi.visible = false; world.add(structEdi);
-const XCEN = OPT2 ? 10.5 : 9;                  // columna interior única (retícula ~7.5 m)
+const XCEN = EXC;                              // columna interior única (centro del edificio)
 
 function box(w, h, d, x, y, z, mat, parent, shadow=true) {
   const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
@@ -456,8 +457,8 @@ quad([[0,0,-30],[0,0,0],[55,drop,0],[55,drop,-30]], M.grass, 12, 8);
 quad([[0,0,20],[0,0,50],[55,drop,50],[55,drop,20]], M.grass, 12, 8);
 quad([[50,FLOOR,0],[50,FLOOR,20],[58,drop,20],[58,drop,0]], M.grass, 3, 5);
 quad([[45,FLOOR+0.02,0],[45,FLOOR+0.02,20],[50,FLOOR+0.02,20],[50,FLOOR+0.02,0]], M.apron, 2, 5);
-box(3, 3.9, 15, 1.5, ST-1.95, 7.5, M.concrete, world);
-quad([[0,0.03,0],[0,0.03,15],[3,0.03,15],[3,0.03,0]], M.apron, 1.5, 6);
+box(RET, 3.9, 15, RET/2, ST-1.95, 7.5, M.concrete, world);
+quad([[0,0.03,0],[0,0.03,15],[RET,0.03,15],[RET,0.03,0]], M.apron, 2, 6);
 
 /* ============ RAMPA ≈16 % HASTA 1 m ANTES DEL PORTÓN (−4.90) ============ */
 quad([[0,ST,RAMP.z0],[0,ST,RAMP.z1],[RAMP.xTop,ST,RAMP.z1],[RAMP.xTop,ST,RAMP.z0]], M.apron, 1, 1);
@@ -481,6 +482,7 @@ for (let x=0; x<50; x+=5) {
 
 /* ============ EDIFICIO — 4 PISOS + TERRAZA ============ */
 const ex0 = EDI.x0, ex1 = EDI.x1, ez0 = EDI.z0, ez1 = EDI.z1;
+const WX0 = ex0 + 1.5;                          // inicio de la ventana en la fachada sur
 
 // --- losas (cada losa pertenece al nivel de arriba) ---
 for (let k=1; k<=4; k++) {
@@ -532,7 +534,7 @@ for (let k=0; k<4; k++)
     structEdi.add(p);
   });
   const tag = OPT2 ? ' (lámina A-1/A-2)' : '';
-  label('Retícula 7.33 × 7.33 m · 1 sola columna interior' + tag, [EXC, Y4+1.6, 7.5], 0.85, structEdi, true);
+  label('Retícula ' + ((ex1-ex0)/2).toFixed(2) + ' × ' + ((ez1-ez0)/2).toFixed(2) + ' m · 1 sola columna interior' + tag, [EXC, Y4+1.6, 7.5], 0.85, structEdi, true);
   label(OPT2 ? 'Columna metálica C1 350×350 (9 u)' : 'Columna metálica 300×300 (9 u)', [XCEN, Y3-1.2, 7.5], 0.6, structEdi);
   label('Viga principal I 500×200×15×8 · secundarias @ 1.15 m', [EXC, Y1+2.6, 11.5], 0.55, structEdi);
   label(OPT2 ? 'Plinto P2 3.00×3.00×0.35 · N-5.32' : 'Plinto 2.00×2.00×0.40 m · N-5.30', [XCEN, -5.0, 7.5], 0.55, structEdi);
@@ -559,8 +561,8 @@ box(0.12, 0.09, ez1-1.8, ex0, Y2-0.1, ez1/2, M.frame, ediLevels[1]);
 box(0.16, 2.3, 0.08, ex0, Y1+1.15, 6.6, M.frame, ediLevels[1]);
 box(0.16, 2.3, 0.08, ex0, Y1+1.15, 8.4, M.frame, ediLevels[1]);
 wallX([[ex0, ex1, Y1, Y2]], ez0, M.paintEdi, ediLevels[1]);
-wallX([[ex0, 4.5, Y1, Y2],[ex1-0.5, ex1, Y1, Y2],[4.5, ex1-0.5, Y1, Y1+1.0],[4.5, ex1-0.5, Y1+2.4, Y2]], ez1, M.paintEdi, ediLevels[1]);
-box(ex1-0.5-4.5, 1.4, 0.06, (4.5+ex1-0.5)/2, Y1+1.7, ez1, M.glass, ediLevels[1]);
+wallX([[ex0, WX0, Y1, Y2],[ex1-0.5, ex1, Y1, Y2],[WX0, ex1-0.5, Y1, Y1+1.0],[WX0, ex1-0.5, Y1+2.4, Y2]], ez1, M.paintEdi, ediLevels[1]);
+box(ex1-0.5-WX0, 1.4, 0.06, (WX0+ex1-0.5)/2, Y1+1.7, ez1, M.glass, ediLevels[1]);
 // cara este de la PB: vano abierto con REJAS CORREDIZAS (paso de montacargas al galpón)
 wallZ([[ez0, ez0+0.5, Y1, Y2], [ez1-0.5, ez1, Y1, Y2]], ex1, M.paintEdi, ediLevels[1]);
 (function(){
@@ -586,8 +588,8 @@ wallZ([[ez0, ez0+0.6, SGN1, Y3], [ez1-0.6, ez1, SGN1, Y3]], ex0, M.paintEdi, edi
 for (let z=ez0+0.6; z<=ez1-0.6+0.01; z+=1.65) box(0.12, MCT-SGN1, 0.09, ex0, (SGN1+MCT)/2, z, M.frame, ediLevels[2]);
 wallZ([[ez0, ez1, MCT, Y3]], ex0, M.paintEdi, ediLevels[2]);
 wallX([[ex0, ex1, Y2, Y3]], ez0, M.paintEdi, ediLevels[2]);
-wallX([[ex0, 4.5, Y2, Y3],[ex1-0.5, ex1, Y2, Y3],[4.5, ex1-0.5, Y2, Y2+1.0],[4.5, ex1-0.5, Y2+2.4, Y3]], ez1, M.paintEdi, ediLevels[2]);
-box(ex1-0.5-4.5, 1.4, 0.06, (4.5+ex1-0.5)/2, Y2+1.7, ez1, M.glass, ediLevels[2]);
+wallX([[ex0, WX0, Y2, Y3],[ex1-0.5, ex1, Y2, Y3],[WX0, ex1-0.5, Y2, Y2+1.0],[WX0, ex1-0.5, Y2+2.4, Y3]], ez1, M.paintEdi, ediLevels[2]);
+box(ex1-0.5-WX0, 1.4, 0.06, (WX0+ex1-0.5)/2, Y2+1.7, ez1, M.glass, ediLevels[2]);
 wallZ([[ez0, ez1, Y2, Y3]], ex1, M.paintEdi, ediLevels[2]);
 
 // --- B3 (departamento: Y3 → Y4) ---
@@ -708,17 +710,17 @@ function chairOf(x, z, ry, parent) {
 // N-3.70
 (function(){
   const g = ediLevels[0], y = LV[0];
-  wallX([[3.2, 7.6, y, y+2.6], [8.6, 9.2, y, y+2.6]], 10.0, M.paintInt, g, IW);
+  wallX([[ex0+0.2, 7.6, y, y+2.6], [8.6, 9.2, y, y+2.6]], 10.0, M.paintInt, g, IW);
   wallZ([[10.0, 14.8, y, y+2.6]], 9.2, M.paintInt, g, IW);
-  box(3.0, 0.12, 1.3, 5.6, y+0.76, 12.4, M.wood, g);
-  box(0.5, 0.7, 0.5, 5.6, y+0.35, 12.4, M.wood, g, false);
-  [[4.4,11.5],[5.4,11.5],[6.4,11.5],[4.4,13.3],[5.4,13.3],[6.4,13.3],[7.4,12.4]].forEach(p => {
-    const ch = chairOf(p[0], p[1], p[1]>12.4?Math.PI:0, g); ch.position.y = y;
+  box(2.8, 0.12, 1.3, ex0+1.9, y+0.76, 12.4, M.wood, g);
+  box(0.5, 0.7, 0.5, ex0+1.9, y+0.35, 12.4, M.wood, g, false);
+  [[0.6,11.5],[1.6,11.5],[2.6,11.5],[0.6,13.3],[1.6,13.3],[2.6,13.3],[3.6,12.4]].forEach(p => {
+    const ch = chairOf(ex0+p[0], p[1], p[1]>12.4?Math.PI:0, g); ch.position.y = y;
   });
-  box(5, 0.9, 0.8, 6.5, y+0.45, 0.8, M.wood, g);
-  box(0.8, 0.9, 5, 3.7, y+0.45, 5.5, M.wood, g);
-  label('Sala de reuniones 4.4 × 4.8 m', [5.8, y+2.9, 12.4], 0.6, g);
-  label('Área de trabajo ≈ ' + (OPT2?'170':'127') + ' m²', [7+DX/2, y+2.6, 4.5], 0.6, g);
+  box(4.5, 0.9, 0.8, ex0+2.5, y+0.45, 0.8, M.wood, g);
+  box(0.8, 0.9, 5, ex0+0.6, y+0.45, 5.5, M.wood, g);
+  label('Sala de reuniones 4.5 × 4.8 m', [ex0+2.0, y+2.9, 12.4], 0.6, g);
+  label('Área de trabajo ≈ ' + (OPT2?'153':'111') + ' m²', [7+DX/2, y+2.6, 4.5], 0.6, g);
 })();
 // N 0.00
 (function(){
@@ -727,7 +729,7 @@ function chairOf(x, z, ry, parent) {
   wallX([[9.9+DX, 10.8+DX, y, y+2.7], [11.8+DX, CORE.x1, y, y+2.7]], 11.9, M.paintInt, g, IW);
   wallZ([[9.0, 14.8, y, y+2.7]], 9.9+DX, M.paintInt, g, IW);
   for (let i=0; i<(OPT2?6:4); i++) for (let j=0;j<6;j++) {
-    const cx = 4.3+i*1.5, cz = 1.8+j*2.2;
+    const cx = ex0+0.5+i*1.5, cz = 1.8+j*2.2;
     if (Math.abs(cx-XCEN) < 0.8 && Math.abs(cz-7.5) < 1.3) continue;   // libra la columna central
     const ch = chairOf(cx, cz, 0.3*((i+j)%3-1), g);
     ch.position.y = y;
@@ -738,7 +740,7 @@ function chairOf(x, z, ry, parent) {
   box(0.7, 0.5, 0.5, 10.6+DX, y+0.25, 14.2, M.fixture, g, false);
   box(0.7, 0.5, 0.5, 11.8+DX, y+0.25, 14.2, M.fixture, g, false);
   box(1.8, 0.85, 0.5, 13.6+DX, y+0.43, 14.2, M.fixture, g, false);
-  label('Exhibición sillas ≈ ' + (OPT2?'158':'114') + ' m²', [6.3+DX/2, y+2.7, 7.5], 0.62, g);
+  label('Exhibición sillas ≈ ' + (OPT2?'142':'100') + ' m²', [6.3+DX/2, y+2.7, 7.5], 0.62, g);
   label('Oficinas 4.9 × 2.9 m', [12.3+DX, y+2.6, 10.4], 0.52, g);
   label('Baños 4.9 × 2.9 m', [12.3+DX, y+2.6, 13.4], 0.5, g);
 })();
@@ -746,12 +748,11 @@ function chairOf(x, z, ry, parent) {
 (function(){
   const g = ediLevels[2], y = LV[2];
   [6.6, 9.6, 12.6].forEach(z => {
-    box(7.5+DX, 0.06, 0.9, 7.2+DX/2, y+1.15, z, M.wood, g);
-    box(7.5+DX, 0.06, 0.9, 7.2+DX/2, y+0.6, z, M.wood, g);
-    box(7.5+DX, 0.06, 0.9, 7.2+DX/2, y+1.7, z, M.wood, g);
-    [3.6, 7.2+DX/2, 10.8+DX].forEach(x => box(0.07, 1.75, 0.9, x, y+0.9, z, M.frame, g, false));
+    const sx0 = ex0+0.2, sx1 = CORE.xW-0.2, sw = sx1-sx0, sc = (sx0+sx1)/2;
+    [y+0.6, y+1.15, y+1.7].forEach(yy => box(sw, 0.06, 0.9, sc, yy, z, M.wood, g));
+    [sx0+0.2, sc, sx1-0.2].forEach(x => box(0.07, 1.75, 0.9, x, y+0.9, z, M.frame, g, false));
   });
-  label('Sala de exhibición · Piso 1 ≈ ' + (OPT2?'193':'148') + ' m²', [8+DX/2, y+2.6, 7.5], 0.62, g);
+  label('Sala de exhibición · Piso 1 ≈ ' + (OPT2?'174':'130') + ' m²', [8+DX/2, y+2.6, 7.5], 0.62, g);
 })();
 // N+6.93 · DEPARTAMENTO (rediseñado) — 3 dormitorios, sala-comedor, cocina, 2 baños
 (function(){
@@ -769,7 +770,7 @@ function chairOf(x, z, ry, parent) {
   // divisor privado / fondo (baño+ppal) : muro en x=12.7
   wall([[5.2,9.2],[10.0,14.8]], 12.7, 'z');
   // frente: separa comedor(z<5) de sala(z>5)
-  wall([[3.2,5.8],[6.8,8.7]], 5.0, 'x');
+  wall([[ex0+0.2,5.8],[6.8,8.7]], 5.0, 'x');
   // cocina / dorm3 (z=5) en banda media
   wall([[8.7,12.7]], 5.0, 'x');
   // dorm3 / dorm2 (z=10.2)
@@ -783,7 +784,7 @@ function chairOf(x, z, ry, parent) {
   table(5.6, 2.4, 1.1, 2.2);
   [[5.0,1.4],[6.2,1.4],[5.0,2.4],[6.2,2.4],[5.0,3.4],[6.2,3.4]].forEach(p=>{const c=chairOf(p[0],p[1],0,g);c.position.y=y;});
   // ---- SALA (frente-der, x3.2-8.5 · z5.2-14.8) ----
-  sofa(4.4, 10.0, 1.0, 3.2);           // sofá contra fachada
+  sofa(ex0+0.7, 10.0, 1.0, 3.2);       // sofá contra fachada
   sofa(6.8, 13.6, 3.0, 0.95);          // sofá lateral
   box(1.3,0.4,0.7, 5.6, y+0.2, 11.0, M.wood, g, false);   // mesa de centro
   box(0.4,0.6,2.4, 7.9, y+0.3, 9.5, M.fixture, g, false); // mueble TV
@@ -819,7 +820,7 @@ function chairOf(x, z, ry, parent) {
   box(0.7,0.5,0.5, 13.3, y+0.25, 9.0, M.fixture, g, false); // ensuite
   box(1.4,0.55,0.65, 16.6, y+0.28, 9.0, M.fixture, g, false);
 
-  label('DEPARTAMENTO ≈ 205 m²', [EXC-1.5, y+H+0.6, 7.5], 0.7, g, true);
+  label('DEPARTAMENTO ≈ 185 m²', [EXC-1.5, y+H+0.6, 7.5], 0.7, g, true);
   label('Sala', [5.2, y+H, 10.5], 0.5, g);
   label('Comedor', [5.4, y+H, 2.4], 0.45, g);
   label('Cocina', [10.6, y+H, 2.2], 0.45, g);
@@ -833,14 +834,14 @@ function chairOf(x, z, ry, parent) {
   const g = ediLevels[4], y = LV[4];
   box(1.6, 0.12, 1.6, 6.5+DX/2, y+0.76, 9.5, M.wood, g);
   [[5.6+DX/2,8.6],[7.4+DX/2,8.6],[5.6+DX/2,10.4],[7.4+DX/2,10.4]].forEach(p => { const c = chairOf(p[0], p[1], 0, g); c.position.y = y; });
-  [[3.8,1.0],[3.8,14.0],[ex1-0.8,7.5],[ex1-0.8,14.0],[EXC,0.7]].forEach(p => {
+  [[ex0+0.8,1.0],[ex0+0.8,14.0],[ex1-0.8,7.5],[ex1-0.8,14.0],[EXC,0.7]].forEach(p => {
     box(0.7, 0.5, 0.7, p[0], y+0.25, p[1], M.wood, g, false);
     box(0.55, 0.7, 0.55, p[0], y+0.85, p[1], M.plant, g, false);
   });
   // claraboya (lucernario) del patio de luz
   box(1.85, 0.65, 3.4, 11.8, y+0.33, 7.1, M.frame, g);
   box(1.65, 0.05, 3.2, 11.8, y+0.68, 7.1, M.skylight, g, false);
-  label('Terraza ≈ ' + (OPT2?'205':'158') + ' m² · teja española', [EXC-1, y+2.2, 7.5], 0.6, g);
+  label('Terraza ≈ ' + (OPT2?'185':'138') + ' m² · teja española', [EXC-1, y+2.2, 7.5], 0.6, g);
 })();
 
 /* ============ GALPONES ============ */
@@ -1112,8 +1113,8 @@ function parkedCar(x, y, z, rot, col) {
   box(0.14, 0.16, 7.2, 0, 2.05, 7.0, M.frame, world);   // riel superior
 })();
 box(0.14, 0.14, 3.0, 0, 2.05, 1.9, M.frame, world);     // riel del vano peatonal
-parkedCar(1.55, 0.05, 3.4, 0, M.carW);                  // auto 1 (de lado, paralelo a la calle)
-parkedCar(1.55, 0.05, 12.6, 0, M.carS);                 // auto 2 (visitas/showroom)
+parkedCar(2.3, 0.05, 3.4, 0, M.carW);                   // auto 1 (de lado, paralelo a la calle)
+parkedCar(2.3, 0.05, 12.6, 0, M.carS);                  // auto 2 (visitas/showroom)
 // -- Interior: bahía privada junto al ascensor (nivel −3.70), compras directo al ascensor --
 [[13.0,5.4],[13.0,9.6],[17.4,5.4],[17.4,9.6]].forEach(p =>
   box(0.1, 0.02, 4.2, p[0], FLOOR+0.04, 7.5, M.paint2, world, false));   // demarcación bahía
@@ -1135,11 +1136,12 @@ tree(30, -2.0, -5, 1.2); tree(48, -3.1, 24, 1.1); tree(12, -0.8, 24, 1.1);
 
 /* ============ MEDIDAS ============ */
 label('TERRENO 1000 m² · frente 20 m × fondo 50 m', [25, 17.5, 10], 1.1, medidas, true);
-label(OPT2 ? 'EDIFICIO 15 × 15 m · 225 m² por planta · entrepisos 3.40 m' : 'EDIFICIO 15 × 12 m · 180 m² por planta', [EXC, Y4+5.5, 7.5], 1.0, medidas, true);
+const EDA = (ez1-ez0) * (ex1-ex0);
+label('EDIFICIO ' + (ez1-ez0).toFixed(0) + ' × ' + (ex1-ex0).toFixed(2) + ' m · ' + EDA.toFixed(0) + ' m² por planta' + (OPT2 ? ' · entrepisos 3.40 m' : ''), [EXC, Y4+5.5, 7.5], 1.0, medidas, true);
 label(OPT2 ? 'GALPÓN NUEVO 15 × 15 m · 225 m²' : 'GALPÓN NUEVO 15 × 18 m · 270 m²', [(GN.x0+GN.x1)/2, 7.6, 7.5], 1.0, medidas, true);
 label('GALPÓN EXISTENTE 20 × 12 m · 240 m²', [39, 7.9, 10], 1.0, medidas, true);
 label('RAMPA 5.00 m ancho · ≈16 % · largo 31 m (1 m plano)', [12, 1.6, 17.5], 0.8, medidas, true);
-label('Retiro frontal 3.00 m · parqueo en paralelo', [1.5, 2.7, 8], 0.6, medidas, true);
+label('Retiro frontal 4.50 m · parqueo en paralelo', [RET/2, 2.7, 8], 0.6, medidas, true);
 label('Bahía privada · compras directo al ascensor', [15.2, FLOOR+1.9, 8], 0.6, medidas, true);
 label('Retiro posterior 5.00 m', [47.5, -1.6, 10], 0.6, medidas);
 label('Andén de descarga 1.20 m', [30.5, -3.0, 16.2], 0.6, medidas);
