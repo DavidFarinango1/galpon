@@ -159,7 +159,8 @@ const RET = 3.0;                                 // retiro frontal municipal
 const EDI = { x0:RET, x1:15+DX, z0:0, z1:15 };   // OPT2: 15.00 m de fondo × 15 de ancho
 const GN  = { x0:15+DX, x1:33, z0:0, z1:15 };
 const GE  = { x0:33, x1:45, z0:0, z1:20 };
-const EAVE = 5.80, RIDGE = 7.22;        // galpón +1.50 m: alero 9.50 y cumbrero 10.92 sobre el piso -3.70
+const EAVE = 5.80, RIDGE = 7.22;        // GALPÓN NUEVO (+1.50 m): alero 9.50 y cumbrero 10.92 sobre el piso −3.70
+const EAVE_GE = 4.30, RIDGE_GE = 5.72;  // GALPÓN EXISTENTE 20×12 (ya construido, no se toca)
 // Opción 2 = cotas de la lámina A-2: entrepisos uniformes de 3.40 m
 const LV = OPT2 ? [-3.70, 0.13, 3.53, 6.93, 10.33] : [-3.70, 0, 3.40, 6.20, 9.00];
 const Y0=LV[0], Y1=LV[1], Y2=LV[2], Y3=LV[3], Y4=LV[4];
@@ -848,7 +849,8 @@ function chairOf(x, z, ry, parent) {
 function galpon(x0, x1, z0, z1, opts) {
   const g = opts.group || world;
   const zc = (z0+z1)/2;
-  const slopePct = (RIDGE-EAVE)/(zc-z0);
+  const EV = opts.eave || EAVE, RG = opts.ridge || RIDGE;   // alturas propias del galpón
+  const slopePct = (RG-EV)/(zc-z0);
   const BASE = FLOOR + (OPT2 ? 3.8 : 3.0);        // muro de hormigón 1.80 + bloque 2.00 (lámina A-3)
   ['S','N'].forEach(cara => {
     const z = cara==='S' ? z1 : z0;
@@ -861,9 +863,9 @@ function galpon(x0, x1, z0, z1, opts) {
     if (OPT2 && !doors.length) box(x1-x0, 1.8, T+0.06, (x0+x1)/2, FLOOR+0.9, z, M.concrete, g);   // "murro" 1.80 (lámina A-3)
     let segsS = [], prev2 = x0;
     const tall = doors.filter(d => FLOOR+d.h > BASE);
-    tall.forEach(d => { segsS.push([prev2, d.a, BASE, EAVE]); prev2 = d.b; });
-    segsS.push([prev2, x1, BASE, EAVE]);
-    tall.forEach(d => segsS.push([d.a, d.b, FLOOR+d.h, EAVE]));
+    tall.forEach(d => { segsS.push([prev2, d.a, BASE, EV]); prev2 = d.b; });
+    segsS.push([prev2, x1, BASE, EV]);
+    tall.forEach(d => segsS.push([d.a, d.b, FLOOR+d.h, EV]));
     wallX(segsS, z, opts.sid, opts.clad || g);
     for (let x=x0+2; x<x1-1.5; x+=3.6) {
       if (doors.some(d => x > d.a-1 && x < d.b+1)) continue;
@@ -881,8 +883,8 @@ function galpon(x0, x1, z0, z1, opts) {
     doors.forEach(d => { if (FLOOR+d.h < BASE) segsB.push([d.a, d.b, FLOOR+d.h, BASE]); });
     wallZ(segsB, x, M.block, g);
     const sh = new THREE.Shape();
-    sh.moveTo(z0, BASE); sh.lineTo(z1, BASE); sh.lineTo(z1, EAVE);
-    sh.lineTo(zc, RIDGE); sh.lineTo(z0, EAVE); sh.closePath();
+    sh.moveTo(z0, BASE); sh.lineTo(z1, BASE); sh.lineTo(z1, EV);
+    sh.lineTo(zc, RG); sh.lineTo(z0, EV); sh.closePath();
     doors.filter(d => FLOOR+d.h > BASE).forEach(d => {
       const hole = new THREE.Path();
       hole.moveTo(d.a, BASE-0.01); hole.lineTo(d.b, BASE-0.01);
@@ -901,20 +903,20 @@ function galpon(x0, x1, z0, z1, opts) {
   const runS = (z1+ov)-zc;
   const ang = Math.atan(slopePct);
   const len = Math.sqrt(runS*runS + Math.pow(runS*slopePct,2));
-  const yE = RIDGE - runS*slopePct;
+  const yE = RG - runS*slopePct;
   [1,-1].forEach(sgn => {
     const p = new THREE.Mesh(new THREE.PlaneGeometry(roofW, len), opts.roof);
     p.rotation.x = -Math.PI/2 + sgn*ang;
-    p.position.set((x0+x1)/2, (RIDGE+yE)/2 + 0.05, zc + sgn*runS/2);
+    p.position.set((x0+x1)/2, (RG+yE)/2 + 0.05, zc + sgn*runS/2);
     p.castShadow = p.receiveShadow = true;
     (opts.clad || g).add(p);
   });
-  box(roofW, 0.09, 0.5, (x0+x1)/2, RIDGE+0.1, zc, M.steelLight, opts.clad || g);
+  box(roofW, 0.09, 0.5, (x0+x1)/2, RG+0.1, zc, M.steelLight, opts.clad || g);
   (opts.sky||[]).forEach(x => {
     [1,-1].forEach(sgn => {
       const p = new THREE.Mesh(new THREE.PlaneGeometry(1.5, len-1.4), M.skylight);
       p.rotation.x = -Math.PI/2 + sgn*ang;
-      p.position.set(x, (RIDGE+yE)/2 + 0.11, zc + sgn*runS/2);
+      p.position.set(x, (RG+yE)/2 + 0.11, zc + sgn*runS/2);
       (opts.clad || g).add(p);
     });
   });
@@ -941,14 +943,14 @@ for (let i=0;i<4;i++) box(1.1, 0.25, 0.32, 24.7, FLOOR-0.13-i*0.25, 15.3+ i*0.32
 
 /* ---- GALPÓN EXISTENTE — cara oeste abierta hacia el galpón nuevo (planta en L) ---- */
 galpon(GE.x0, GE.x1, GE.z0, GE.z1, {
-  sid: M.sidOld, roof: M.roofOld,
+  sid: M.sidOld, roof: M.roofOld, eave: EAVE_GE, ridge: RIDGE_GE,
   skip: ['W'],
   sky: [37, 41],
 });
 // solo se cierra el tramo que NO comparte con el galpón nuevo (z 15–20), con el portón del andén
 (function(){
-  const zc = (GE.z0+GE.z1)/2, slope = (RIDGE-EAVE)/(zc-GE.z0);
-  const yAt = z => RIDGE - Math.abs(z-zc)*slope;
+  const zc = (GE.z0+GE.z1)/2, slope = (RIDGE_GE-EAVE_GE)/(zc-GE.z0);
+  const yAt = z => RIDGE_GE - Math.abs(z-zc)*slope;
   const BASE = FLOOR + (OPT2 ? 3.8 : 3.0);
   const zA = GN.z1, zB = GE.z1, dA = 15.4, dB = 19.6, dTop = FLOOR + 4.2;
   wallZ([[zA, dA, FLOOR, BASE], [dB, zB, FLOOR, BASE]], GE.x0, M.block, world);
@@ -962,6 +964,26 @@ galpon(GE.x0, GE.x1, GE.z0, GE.z1, {
   world.add(mesh);
   box(0.1, 4.2-0.08, dB-dA-0.15, GE.x0+0.06, FLOOR+2.1, (dA+dB)/2, M.door, world);   // portón del andén
   // el vano de 15 m queda libre: sin columnas intermedias que corten la L
+})();
+/* Cierre del desnivel entre el galpón nuevo (más alto) y el existente, en x=33 */
+(function(){
+  const zcN = (GN.z0+GN.z1)/2, zcE = (GE.z0+GE.z1)/2;
+  const slopeN = (RIDGE-EAVE)/(zcN-GN.z0), slopeE = (RIDGE_GE-EAVE_GE)/(zcE-GE.z0);
+  const yN = z => RIDGE - Math.abs(z-zcN)*slopeN;      // perfil de cubierta del nuevo
+  const yE = z => RIDGE_GE - Math.abs(z-zcE)*slopeE;   // perfil de cubierta del existente
+  const sh = new THREE.Shape();
+  sh.moveTo(GN.z0, yE(GN.z0));
+  sh.lineTo(zcE, yE(zcE));
+  sh.lineTo(GN.z1, yE(GN.z1));
+  sh.lineTo(GN.z1, yN(GN.z1));
+  sh.lineTo(zcN, yN(zcN));
+  sh.lineTo(GN.z0, yN(GN.z0));
+  sh.closePath();
+  const m = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth:T, bevelEnabled:false }), M.sidNew);
+  m.rotation.y = -Math.PI/2;
+  m.position.set(GE.x0 + T/2, 0, 0);
+  m.castShadow = m.receiveShadow = true;
+  cladNew.add(m);
 })();
 
 /* ============ ESTRUCTURA GALPÓN NUEVO ============ */
@@ -1139,7 +1161,7 @@ label('TERRENO 1000 m² · frente 20 m × fondo 50 m', [25, 17.5, 10], 1.1, medi
 const EDA = (ez1-ez0) * (ex1-ex0);
 label('EDIFICIO ' + (ez1-ez0).toFixed(0) + ' × ' + (ex1-ex0).toFixed(2) + ' m · ' + EDA.toFixed(0) + ' m² por planta' + (OPT2 ? ' · entrepisos 3.40 m' : ''), [EXC, Y4+5.5, 7.5], 1.0, medidas, true);
 label(OPT2 ? 'GALPÓN NUEVO 15 × 15 m · 225 m²' : 'GALPÓN NUEVO 15 × 18 m · 270 m²', [(GN.x0+GN.x1)/2, 9.2, 7.5], 1.0, medidas, true);
-label('GALPÓN EXISTENTE 20 × 12 m · 240 m²', [39, 9.4, 10], 1.0, medidas, true);
+label('GALPÓN EXISTENTE 20 × 12 m · 240 m² (ya construido)', [39, 7.9, 10], 1.0, medidas, true);
 label('RAMPA 5.00 m ancho · ≈16 % · largo 31 m (1 m plano)', [12, 1.6, 17.5], 0.8, medidas, true);
 label('Retiro frontal 3.00 m · parqueo en paralelo', [RET/2, 2.7, 8], 0.6, medidas, true);
 label('Bahía privada · compras directo al ascensor', [15.2, FLOOR+1.9, 8], 0.6, medidas, true);
@@ -1147,7 +1169,8 @@ label('Retiro posterior 5.00 m', [47.5, -1.6, 10], 0.6, medidas);
 label('Andén de descarga 1.20 m', [30.5, -3.0, 16.2], 0.6, medidas);
 label('Contenedor 40HQ (12.19 m) a 1 m · unión con tablas', [29, -2.0, 19.0], 0.6, medidas, true);
 label('Portón 4x4 · 3.00 × 2.50 m (según plano A-3)', [21.5, FLOOR+2.9, 15.6], 0.6, medidas, true);
-label('Alero +5.80 · Cumbrero +7.22 (9.50 / 10.92 m del piso)', [(GN.x0+GN.x1)/2, 8.4, -1.2], 0.7, medidas);
+label('GALPÓN NUEVO: alero +5.80 · cumbrero +7.22 (9.50 / 10.92 m del piso)', [(GN.x0+GN.x1)/2, 8.4, -1.2], 0.7, medidas);
+label('Existente: alero +4.30 · cumbrero +5.72 (sin cambios)', [39, 6.9, -1.2], 0.6, medidas);
 if (OPT2) label('Mampostería 3.80 m (muro 1.80 + bloque 2.00)', [(GN.x0+GN.x1)/2, FLOOR+4.3, 15.9], 0.6, medidas);
 label('Portón 5.00 × 4.40 m', [30, 1.2, 15.9], 0.55, medidas);
 label('Portón andén 4.20 × 4.20 m', [32.3, 0.5, 17.5], 0.55, medidas);
