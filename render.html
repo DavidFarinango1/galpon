@@ -458,6 +458,16 @@ quad([[0,0,-30],[0,0,0],[55,drop,0],[55,drop,-30]], M.grass, 12, 8);
 quad([[0,0,20],[0,0,50],[55,drop,50],[55,drop,20]], M.grass, 12, 8);
 quad([[50,FLOOR,0],[50,FLOOR,20],[58,drop,20],[58,drop,0]], M.grass, 3, 5);
 quad([[45,FLOOR+0.02,0],[45,FLOOR+0.02,20],[50,FLOOR+0.02,20],[50,FLOOR+0.02,0]], M.apron, 2, 5);
+// Rampa de acceso + gradas en el retiro posterior, bajando a N−5.20 (lámina L1)
+(function(){
+  const BX0=45.7, BX1=48.7, BZ0=15.3, BZ1=17.35, BY=-5.20;   // 3.00 × 2.05
+  quad([[BX0,FLOOR,BZ0],[BX0,FLOOR,BZ1],[BX1,BY,BZ1],[BX1,BY,BZ0]], M.ramp, 1, 2);
+  quad([[BX1,BY+0.02,BZ0],[BX1,BY+0.02,BZ1+2.4],[50,BY+0.02,BZ1+2.4],[50,BY+0.02,BZ0]], M.apron, 1, 1);
+  box(0.22, FLOOR-BY, BZ1-BZ0, BX0-0.11, (FLOOR+BY)/2, (BZ0+BZ1)/2, M.concrete, world);
+  for (let i=0;i<6;i++)
+    box(0.30, 0.25, 1.1, BX0+0.15+i*0.30, FLOOR-0.125-i*0.25, BZ1+1.1, M.concrete, world, false);
+  label('Rampa de acceso posterior · N−5.20', [47.2, -4.0, 18.6], 0.55, medidas);
+})();
 box(RET, 3.9, 15, RET/2, ST-1.95, 7.5, M.concrete, world);
 quad([[0,0.03,0],[0,0.03,15],[RET,0.03,15],[RET,0.03,0]], M.apron, 2, 6);
 
