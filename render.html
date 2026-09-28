@@ -123,7 +123,7 @@
   <h3 style="margin-top:4px">Opciones</h3>
   <label class="row">Medidas y rótulos <input type="checkbox" id="chkMedidas" checked></label>
   <label class="row">Estructura galpón nuevo <input type="checkbox" id="chkStruct"></label>
-  <label class="row">Estructura y cimientos edificio <input type="checkbox" id="chkStructEdi"></label>
+  <label class="row">Estructura y cimientos <input type="checkbox" id="chkStructEdi"></label>
   <label class="row">Rotación automática <input type="checkbox" id="chkRotate"></label>
 </div>
 
@@ -509,27 +509,38 @@ const COLS = OPT2 ? 0.45 : 0.4;
 for (let k=0; k<4; k++)
   box(COLS, LV[k+1]-LV[k], COLS, XCEN, (LV[k]+LV[k+1])/2, 7.5, M.paintInt, ediLevels[k]);
 
-/* ---- ESTRUCTURA DEL EDIFICIO (vista dedicada) — láminas A-1 / A-2 (julio 2026):
+/* ---- ESTRUCTURA Y CIMIENTOS (vista dedicada) — láminas A-1/A-2 de septiembre 2026:
    9 columnas metálicas C1 350x350 en retícula 7.33 x 7.33 (1 sola interior),
    pedestales 50x50 + placa 485x485x15 con 12 Ø3/4" ASTM A193-B7,
-   zapata corrida P1 perimetral + plintos P2 3.00x3.00x0.35, cimentación N-5.32,
+   ZAPATA CORRIDA P1 (15.00 x 2.85 x 0.35, NF −5.02) bajo los muros perimetrales,
+   PLINTOS P2 (3.00 x 3.00 x 0.35, NF −5.32, 2 u) bajo las columnas sin muro,
+   PLINTOS P3 (1.50 x 2.00 x 0.30, NF −5.32) del galpón,
    cadenas de amarre 35x25, vigas I500x200x15x8 y secundarias I400x140x10x6. ---- */
 (function(){
   const gx = [ex0+0.25, XCEN, ex1-0.25];
   const gz = [ez0+0.25, 7.5, ez1-0.25];
-  const FND = OPT2 ? -5.32 : -5.30;
+  const FND = OPT2 ? -5.32 : -5.30;      // plintos P2/P3
+  const FND1 = OPT2 ? -5.02 : -5.30;     // zapata corrida P1
   const CS  = OPT2 ? 0.35 : 0.30;                  // C1 350x350
   const PLQ = OPT2 ? 0.485 : 0.43;                 // placa de apoyo
   gx.forEach(x => gz.forEach(z => {
-    if (OPT2 && (x === XCEN && z === 7.5)) box(3.0, 0.35, 3.0, x, FND+0.175, z, M.concrete, structEdi);  // plinto P2
-    else box(2.0, 0.40, 2.0, x, FND+0.20, z, M.concrete, structEdi);
+    // sobre la zapata corrida van las columnas de los ejes 1, A y C (con muro); las otras llevan plinto P2
+    const sobreCorrida = OPT2 && (x === gx[0] || z === gz[0] || z === gz[2]);
+    if (OPT2 && !sobreCorrida) box(3.0, 0.35, 3.0, x, FND+0.175, z, M.concrete, structEdi);   // plinto P2 (2 u)
+    else if (!OPT2) box(2.0, 0.40, 2.0, x, FND+0.20, z, M.concrete, structEdi);
     box(0.5, (FLOOR-0.02)-(FND+0.40), 0.5, x, (FND+0.40+FLOOR)/2, z, M.concrete, structEdi);             // pedestal 50x50
     box(PLQ, 0.03, PLQ, x, FLOOR+0.015, z, M.steelLight, structEdi);
     box(CS, Y4-FLOOR, CS, x, (FLOOR+Y4)/2, z, M.steel, structEdi);                                       // columna C1
   }));
-  if (OPT2) {   // zapata corrida P1 (2.50 de ancho) bajo los muros perimetrales
-    [gz[0], gz[2]].forEach(z => box(ex1-ex0, 0.35, 2.5, EXC, FND+0.175, z, M.concrete, structEdi));
-    box(2.5, 0.35, ez1-ez0, gx[0], FND+0.175, 7.5, M.concrete, structEdi);
+  if (OPT2) {   // ZAPATA CORRIDA P1: 2.85 m de ancho, NF −5.02, bajo los muros de hormigón
+    const BW = 2.85;
+    [gz[0], gz[2]].forEach(z => box(ex1-ex0, 0.35, BW, EXC, FND1+0.175, z, M.concrete, structEdi));
+    box(BW, 0.35, ez1-ez0, gx[0], FND1+0.175, 7.5, M.concrete, structEdi);
+    // PLINTOS P3 del galpón (1.50 × 2.00 × 0.30, NF −5.32) — 6 unidades
+    [GN.x0+1.5, GN.x0+7.5, GN.x0+13.5].forEach(px => [GN.z0+0.4, GN.z1-0.4].forEach(pz => {
+      box(1.5, 0.30, 2.0, px, FND+0.15, pz, M.concrete, structEdi);
+      box(0.4, (FLOOR-0.02)-(FND+0.30), 0.4, px, (FND+0.30+FLOOR)/2, pz, M.concrete, structEdi);
+    }));
   }
   // cadenas de amarre 35x25
   gx.forEach(x => box(0.35, 0.25, (gz[2]-gz[0]), x, FLOOR-0.30, 7.5, M.concrete, structEdi));
@@ -551,7 +562,8 @@ for (let k=0; k<4; k++)
   label('Viga principal I 500×200×15×8 · secundarias @ 1.15 m', [EXC, Y1+2.6, 11.5], 0.55, structEdi);
   label(OPT2 ? 'Plinto P2 3.00×3.00×0.35 · N-5.32' : 'Plinto 2.00×2.00×0.40 m · N-5.30', [XCEN, -5.0, 7.5], 0.55, structEdi);
   label('Pedestal 50×50 + placa 485×485×15 (12 Ø3/4")', [ex0+1.5, -4.2, 3.5], 0.5, structEdi);
-  if (OPT2) label('Zapata corrida P1 · ancho 2.50 m', [EXC, -4.6, ez1-0.6], 0.55, structEdi);
+  if (OPT2) label('Zapata corrida P1 · 15.00 × 2.85 × 0.35 · NF −5.02', [EXC, -4.5, ez1-0.6], 0.55, structEdi);
+  if (OPT2) label('Plintos P3 galpón · 1.50 × 2.00 × 0.30 · NF −5.32', [(GN.x0+GN.x1)/2, -4.6, 7.5], 0.55, structEdi);
   label('Cadena de amarre 35×25', [EXC, -3.3, 12.2], 0.5, structEdi);
   label('Altura libre bajo viga 2.77 m', [EXC, Y2-1.4, 3.0], 0.55, structEdi);
 })();
