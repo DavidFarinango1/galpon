@@ -147,7 +147,7 @@ const OPT2 = new URLSearchParams(location.search).get('opt') === '2';
 const DX = OPT2 ? 3 : 0;                       // metros extra de fondo del edificio
 
 document.getElementById('subtitle').textContent = OPT2
-  ? '· OPCIÓN 2 — según planos estructurales A-1/A-2/A-3 (julio 2026)'
+  ? '· OPCIÓN 2 — según planos A-1/A-2/A-3 de septiembre 2026'
   : '· OPCIÓN 1 — edificio 15×12 · galpón 15×18';
 const optBtn = document.getElementById('optToggle');
 optBtn.textContent = OPT2 ? '◂ Mirar Opción 1' : 'Mirar Opción 2 ▸';
@@ -159,7 +159,7 @@ const RET = 3.0;                                 // retiro frontal municipal
 const EDI = { x0:RET, x1:15+DX, z0:0, z1:15 };   // OPT2: 15.00 m de fondo × 15 de ancho
 const GN  = { x0:15+DX, x1:33, z0:0, z1:15 };
 const GE  = { x0:33, x1:45, z0:0, z1:20 };
-const EAVE = 5.80, RIDGE = 7.22;        // GALPÓN NUEVO (+1.50 m): alero 9.50 y cumbrero 10.92 sobre el piso −3.70
+const EAVE = 5.30, RIDGE = 6.70;        // GALPÓN NUEVO (lámina A-3): alero 9.00 y cumbrero 10.40 sobre el piso −3.70
 const EAVE_GE = 4.30, RIDGE_GE = 5.72;  // GALPÓN EXISTENTE 20×12 (ya construido, no se toca)
 // Opción 2 = cotas de la lámina A-2: entrepisos uniformes de 3.40 m
 const LV = OPT2 ? [-3.70, 0.13, 3.53, 6.93, 10.33] : [-3.70, 0, 3.40, 6.20, 9.00];
@@ -483,16 +483,27 @@ for (let x=0; x<50; x+=5) {
 
 /* ============ EDIFICIO — 4 PISOS + TERRAZA ============ */
 const ex0 = EDI.x0, ex1 = EDI.x1, ez0 = EDI.z0, ez1 = EDI.z1;
-const WX0 = ex0 + 1.5;                          // inicio de la ventana en la fachada sur
+const CHX = 5.20, CHZ = 12.25;                  // chaflán (ochave): diagonal (ex0,CHZ) → (CHX,ez1)
+const FZ1 = CHZ, SX0 = CHX;                     // límites de la fachada frontal y de la sur
+const WX0 = CHX + 0.4;                          // inicio de la ventana en la fachada sur
+// losa con la esquina achaflanada (top de la losa en y)
+function losaChaf(xLim, y, h, mat, g) {
+  const sh = new THREE.Shape();
+  sh.moveTo(ex0+0.05, ez0+0.1); sh.lineTo(xLim, ez0+0.1); sh.lineTo(xLim, ez1-0.1);
+  sh.lineTo(CHX, ez1-0.1); sh.lineTo(ex0+0.05, CHZ); sh.closePath();
+  const m = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth:h, bevelEnabled:false }), mat);
+  m.rotation.x = Math.PI/2; m.position.y = y;
+  m.castShadow = m.receiveShadow = true; g.add(m);
+}
 
 // --- losas (cada losa pertenece al nivel de arriba) ---
 for (let k=1; k<=4; k++) {
   const y = LV[k];
-  box(CORE.xW-ex0-0.1, 0.22, ez1-ez0-0.2, (ex0+CORE.xW)/2, y-0.11, (ez0+ez1)/2, M.white, ediLevels[k]);
+  losaChaf(CORE.xW-0.05, y, 0.22, M.white, ediLevels[k]);
   box(ex1-CORE.xW, 0.22, ez1-CORE.zS, (CORE.xW+ex1)/2, y-0.11, (CORE.zS+ez1)/2, M.white, ediLevels[k]);              // sur del núcleo
   box(SHX1-SHX0, 0.22, CORE.zS-SHZ1, SHXC, y-0.11, (SHZ1+CORE.zS)/2, M.white, ediLevels[k]);                          // rellano frente a la puerta
 }
-box(ex1-ex0-0.1, 0.22, ez1-ez0-0.1, EXC, LV[0]-0.05, (ez0+ez1)/2, M.floor, ediLevels[0]);
+losaChaf(ex1-0.05, LV[0]+0.02, 0.22, M.floor, ediLevels[0]);
 // columna interior única C1 (350x350 revestida) en cada nivel — retícula 7.33 m
 const COLS = OPT2 ? 0.45 : 0.4;
 for (let k=0; k<4; k++)
@@ -547,22 +558,22 @@ for (let k=0; k<4; k++)
 
 // --- B0 (subsuelo) — muros de hormigón armado e=35 cm en el perímetro (lámina A-2) ---
 const MW = OPT2 ? 0.35 : T;
-wallZ([[ez0, ez1, LV[0], LV[1]]], ex0, M.concrete, ediLevels[0], MW);
+wallZ([[ez0, FZ1, LV[0], LV[1]]], ex0, M.concrete, ediLevels[0], MW);
 wallX([[ex0, ex1, LV[0], LV[1]]], ez0, OPT2 ? M.concrete : M.paintEdi, ediLevels[0], MW);
-wallX([[ex0, ex1, LV[0], LV[1]]], ez1, OPT2 ? M.concrete : M.paintEdi, ediLevels[0], MW);
+wallX([[SX0, ex1, LV[0], LV[1]]], ez1, OPT2 ? M.concrete : M.paintEdi, ediLevels[0], MW);
 // cara este del subsuelo TOTALMENTE ABIERTA hacia el galpón: un solo espacio continuo.
 // Solo quedan los machones junto a las columnas de esquina del eje 3.
 wallZ([[ez0, ez0+0.6, LV[0], LV[1]], [ez1-0.6, ez1, LV[0], LV[1]]], ex1, M.concrete, ediLevels[0], 0.35);
 
 // --- B1 (PB comercial: Y1 → Y2) ---
-wallZ([[ez0, ez0+0.9, Y1, Y2], [ez1-0.9, ez1, Y1, Y2]], ex0, M.paintEdi, ediLevels[1]);
-box(0.06, Y2-Y1, ez1-0.9-(ez0+0.9), ex0, (Y1+Y2)/2, ez1/2, M.glass, ediLevels[1]);
-for (let z=ez0+0.9; z<=ez1-0.9+0.01; z+=1.65) box(0.12, Y2-Y1, 0.09, ex0, (Y1+Y2)/2, z, M.frame, ediLevels[1]);
-box(0.12, 0.09, ez1-1.8, ex0, Y2-0.1, ez1/2, M.frame, ediLevels[1]);
+wallZ([[ez0, ez0+0.9, Y1, Y2], [FZ1-0.9, FZ1, Y1, Y2]], ex0, M.paintEdi, ediLevels[1]);
+box(0.06, Y2-Y1, FZ1-0.9-(ez0+0.9), ex0, (Y1+Y2)/2, (ez0+FZ1)/2, M.glass, ediLevels[1]);
+for (let z=ez0+0.9; z<=FZ1-0.9+0.01; z+=1.65) box(0.12, Y2-Y1, 0.09, ex0, (Y1+Y2)/2, z, M.frame, ediLevels[1]);
+box(0.12, 0.09, FZ1-1.8, ex0, Y2-0.1, (ez0+FZ1)/2, M.frame, ediLevels[1]);
 box(0.16, 2.3, 0.08, ex0, Y1+1.15, 6.6, M.frame, ediLevels[1]);
 box(0.16, 2.3, 0.08, ex0, Y1+1.15, 8.4, M.frame, ediLevels[1]);
 wallX([[ex0, ex1, Y1, Y2]], ez0, M.paintEdi, ediLevels[1]);
-wallX([[ex0, WX0, Y1, Y2],[ex1-0.5, ex1, Y1, Y2],[WX0, ex1-0.5, Y1, Y1+1.0],[WX0, ex1-0.5, Y1+2.4, Y2]], ez1, M.paintEdi, ediLevels[1]);
+wallX([[SX0, WX0, Y1, Y2],[ex1-0.5, ex1, Y1, Y2],[WX0, ex1-0.5, Y1, Y1+1.0],[WX0, ex1-0.5, Y1+2.4, Y2]], ez1, M.paintEdi, ediLevels[1]);
 box(ex1-0.5-WX0, 1.4, 0.06, (WX0+ex1-0.5)/2, Y1+1.7, ez1, M.glass, ediLevels[1]);
 // cara este de la PB: vano abierto con REJAS CORREDIZAS (paso de montacargas al galpón)
 wallZ([[ez0, ez0+0.5, Y1, Y2], [ez1-0.5, ez1, Y1, Y2]], ex1, M.paintEdi, ediLevels[1]);
@@ -579,17 +590,17 @@ wallZ([[ez0, ez0+0.5, Y1, Y2], [ez1-0.5, ez1, Y1, Y2]], ex1, M.paintEdi, ediLeve
 
 // --- B2 (exhibición P1: Y2 → Y3) — banda de letrero + muro cortina ---
 const SGN0 = Y2, SGN1 = Y2+0.9, MCT = Y3-0.15;
-wallZ([[ez0, ez1, SGN0, SGN1]], ex0, M.paintDark, ediLevels[2]);
-const sign = new THREE.Mesh(new THREE.PlaneGeometry(12.5, 0.66), M.sign);
+wallZ([[ez0, FZ1, SGN0, SGN1]], ex0, M.paintDark, ediLevels[2]);
+const sign = new THREE.Mesh(new THREE.PlaneGeometry(FZ1-ez0-1.2, 0.66), M.sign);
 sign.rotation.y = -Math.PI/2;
-sign.position.set(ex0 - T/2 - 0.012, (SGN0+SGN1)/2, (ez0+ez1)/2);
+sign.position.set(ex0 - T/2 - 0.012, (SGN0+SGN1)/2, (ez0+FZ1)/2);
 ediLevels[2].add(sign);
-box(0.06, MCT-SGN1, ez1-ez0-1.2, ex0, (SGN1+MCT)/2, ez1/2, M.glass, ediLevels[2]);
-wallZ([[ez0, ez0+0.6, SGN1, Y3], [ez1-0.6, ez1, SGN1, Y3]], ex0, M.paintEdi, ediLevels[2]);
-for (let z=ez0+0.6; z<=ez1-0.6+0.01; z+=1.65) box(0.12, MCT-SGN1, 0.09, ex0, (SGN1+MCT)/2, z, M.frame, ediLevels[2]);
-wallZ([[ez0, ez1, MCT, Y3]], ex0, M.paintEdi, ediLevels[2]);
+box(0.06, MCT-SGN1, FZ1-ez0-1.2, ex0, (SGN1+MCT)/2, (ez0+FZ1)/2, M.glass, ediLevels[2]);
+wallZ([[ez0, ez0+0.6, SGN1, Y3], [FZ1-0.6, FZ1, SGN1, Y3]], ex0, M.paintEdi, ediLevels[2]);
+for (let z=ez0+0.6; z<=FZ1-0.6+0.01; z+=1.65) box(0.12, MCT-SGN1, 0.09, ex0, (SGN1+MCT)/2, z, M.frame, ediLevels[2]);
+wallZ([[ez0, FZ1, MCT, Y3]], ex0, M.paintEdi, ediLevels[2]);
 wallX([[ex0, ex1, Y2, Y3]], ez0, M.paintEdi, ediLevels[2]);
-wallX([[ex0, WX0, Y2, Y3],[ex1-0.5, ex1, Y2, Y3],[WX0, ex1-0.5, Y2, Y2+1.0],[WX0, ex1-0.5, Y2+2.4, Y3]], ez1, M.paintEdi, ediLevels[2]);
+wallX([[SX0, WX0, Y2, Y3],[ex1-0.5, ex1, Y2, Y3],[WX0, ex1-0.5, Y2, Y2+1.0],[WX0, ex1-0.5, Y2+2.4, Y3]], ez1, M.paintEdi, ediLevels[2]);
 box(ex1-0.5-WX0, 1.4, 0.06, (WX0+ex1-0.5)/2, Y2+1.7, ez1, M.glass, ediLevels[2]);
 // cara este (hacia el galpón): muro cortina de vidrio — se ve de lado a lado
 const G2A = Y2+0.35, G2B = Y3-0.25;
@@ -602,26 +613,44 @@ box(0.12, 0.09, ez1-ez0-0.8, ex1, G2B, (ez0+ez1)/2, M.frame, ediLevels[2]);
 // --- B3 (departamento: Y3 → Y4) ---
 const AP = Y3+0.8, DT = Y4-0.6;      // antepecho y dintel
 wallZ([
-  [ez0, ez1, Y3, AP], [ez0, ez1, DT, Y4],
-  [ez0, 1.6, AP, DT], [4.2, 5.8, AP, DT], [8.4, 10.0, AP, DT], [12.6, ez1, AP, DT],
+  [ez0, FZ1, Y3, AP], [ez0, FZ1, DT, Y4],
+  [ez0, 1.6, AP, DT], [4.2, 5.8, AP, DT], [8.4, 10.0, AP, DT], [11.8, FZ1, AP, DT],
 ], ex0, M.paintEdi, ediLevels[3]);
-[[1.6,4.2],[5.8,8.4],[10.0,12.6]].forEach(w => {
+[[1.6,4.2],[5.8,8.4],[10.0,11.8]].forEach(w => {
   box(0.06, DT-AP, w[1]-w[0], ex0, (AP+DT)/2, (w[0]+w[1])/2, M.glass, ediLevels[3]);
   box(0.1, 0.06, w[1]-w[0], ex0-0.06, AP, (w[0]+w[1])/2, M.white, ediLevels[3]);
   box(0.1, DT-AP, 0.07, ex0, (AP+DT)/2, (w[0]+w[1])/2, M.frame, ediLevels[3]);
 });
 wallX([[ex0, ex1, Y3, Y4]], ez0, M.paintEdi, ediLevels[3]);
-wallX([[ex0, 5, Y3, Y4],[7, ex1, Y3, Y4],[5, 7, Y3, AP],[5, 7, DT, Y4]], ez1, M.paintEdi, ediLevels[3]);
-box(2, DT-AP, 0.06, 6, (AP+DT)/2, ez1, M.glass, ediLevels[3]);
+wallX([[SX0, 6, Y3, Y4],[8, ex1, Y3, Y4],[6, 8, Y3, AP],[6, 8, DT, Y4]], ez1, M.paintEdi, ediLevels[3]);
+box(2, DT-AP, 0.06, 7, (AP+DT)/2, ez1, M.glass, ediLevels[3]);
 // cara este (hacia el galpón): ventanal corrido en vez de muro ciego
 wallZ([[ez0, ez1, Y3, AP], [ez0, ez1, DT, Y4], [ez0, ez0+0.5, AP, DT], [ez1-0.5, ez1, AP, DT]], ex1, M.paintEdi, ediLevels[3]);
 box(0.06, DT-AP, ez1-ez0-1.0, ex1, (AP+DT)/2, (ez0+ez1)/2, M.glass, ediLevels[3]);
 for (let z=ez0+0.5; z<=ez1-0.5+0.01; z+=1.6) box(0.1, DT-AP, 0.08, ex1, (AP+DT)/2, z, M.frame, ediLevels[3]);
 box(0.12, 0.08, ez1-ez0-1.0, ex1, AP, (ez0+ez1)/2, M.white, ediLevels[3]);
 
+// --- Muro diagonal del chaflán (ochave) en todos los niveles ---
+(function(){
+  const L = Math.hypot(CHX-ex0, ez1-CHZ);
+  const ang = -Math.atan2(ez1-CHZ, CHX-ex0);
+  for (let k=0; k<4; k++) {
+    const b = box(L, LV[k+1]-LV[k], k===0 ? 0.35 : T, (ex0+CHX)/2, (LV[k]+LV[k+1])/2, (CHZ+ez1)/2,
+                  k===0 ? M.concrete : M.paintEdi, ediLevels[k]);
+    b.rotation.y = ang;
+  }
+})();
+
 // --- B4 terraza (sobre la losa Y4) ---
-[[ez0-0.08], [ez1+0.08]].forEach(p => wallX([[ex0-0.15, ex1+0.15, Y4, Y4+1.0]], p[0], M.paintEdi, ediLevels[4], 0.15));
-wallZ([[ez0, ez1, Y4, Y4+1.0]], ex0-0.08, M.paintEdi, ediLevels[4], 0.15);
+wallX([[ex0-0.15, ex1+0.15, Y4, Y4+1.0]], ez0-0.08, M.paintEdi, ediLevels[4], 0.15);
+wallX([[SX0, ex1+0.15, Y4, Y4+1.0]], ez1+0.08, M.paintEdi, ediLevels[4], 0.15);
+// antepecho inclinado sobre el chaflán
+(function(){
+  const L = Math.hypot(CHX-ex0, ez1-CHZ);
+  const b = box(L, 1.0, 0.15, (ex0+CHX)/2, Y4+0.5, (CHZ+ez1)/2, M.paintEdi, ediLevels[4]);
+  b.rotation.y = -Math.atan2(ez1-CHZ, CHX-ex0);
+})();
+wallZ([[ez0, FZ1, Y4, Y4+1.0]], ex0-0.08, M.paintEdi, ediLevels[4], 0.15);
 wallZ([[ez0, ez1, Y4, Y4+1.0]], ex1+0.08, M.paintEdi, ediLevels[4], 0.15);
 // (el ducto de vidrio sube libre hasta la terraza — sin casetón macizo)
 [[ex0+0.6,1.2],[ex0+0.6,7.5],[ex0+0.6,13.8],[ex1-0.6,1.2],[ex1-0.6,7.5],[ex1-0.6,13.8]].forEach(p =>
@@ -652,7 +681,7 @@ wallZ([[ez0, ez1, Y4, Y4+1.0]], ex1+0.08, M.paintEdi, ediLevels[4], 0.15);
 const TREAD = 0.28;
 // -- ducto de vidrio con estructura negra (sube libre de -3.70 a la terraza) --
 (function(){
-  const yTop = 11.0;
+  const yTop = Y4 + 2.5;      // tapagrada acristalada sobre la losa (lámina L1)
   [[SHX0,SHZ0],[SHX0,SHZ1],[SHX1,SHZ0],[SHX1,SHZ1],[SHXC,SHZ0],[SHX0,SHZC],[SHX1,SHZC]].forEach(p =>
     box(0.09, yTop-FLOOR, 0.09, p[0], (FLOOR+yTop)/2, p[1], M.frame, ediLevels[0]));
   box(SHX1-SHX0, yTop-FLOOR, 0.04, SHXC, (FLOOR+yTop)/2, SHZ0, M.glass, ediLevels[0], false);
@@ -719,14 +748,14 @@ function chairOf(x, z, ry, parent) {
   const g = ediLevels[0], y = LV[0];
   wallX([[ex0+0.2, 7.6, y, y+2.6], [8.6, 9.2, y, y+2.6]], 10.0, M.paintInt, g, IW);
   wallZ([[10.0, 14.8, y, y+2.6]], 9.2, M.paintInt, g, IW);
-  box(2.8, 0.12, 1.3, ex0+1.9, y+0.76, 12.4, M.wood, g);
-  box(0.5, 0.7, 0.5, ex0+1.9, y+0.35, 12.4, M.wood, g, false);
-  [[0.6,11.5],[1.6,11.5],[2.6,11.5],[0.6,13.3],[1.6,13.3],[2.6,13.3],[3.6,12.4]].forEach(p => {
+  box(2.8, 0.12, 1.3, ex0+2.7, y+0.76, 12.4, M.wood, g);
+  box(0.5, 0.7, 0.5, ex0+2.7, y+0.35, 12.4, M.wood, g, false);
+  [[1.4,11.5],[2.4,11.5],[3.4,11.5],[1.4,13.3],[2.4,13.3],[3.4,13.3],[4.4,12.4]].forEach(p => {
     const ch = chairOf(ex0+p[0], p[1], p[1]>12.4?Math.PI:0, g); ch.position.y = y;
   });
   box(4.5, 0.9, 0.8, ex0+2.5, y+0.45, 0.8, M.wood, g);
   box(0.8, 0.9, 5, ex0+0.6, y+0.45, 5.5, M.wood, g);
-  label('Sala de reuniones 4.5 × 4.8 m', [ex0+2.0, y+2.9, 12.4], 0.6, g);
+  label('Sala de reuniones 4.5 × 4.8 m', [ex0+2.8, y+2.9, 12.4], 0.6, g);
   label('Área de trabajo ≈ ' + (OPT2?'170':'127') + ' m²', [7+DX/2, y+2.6, 4.5], 0.6, g);
 })();
 // N 0.00
@@ -754,7 +783,7 @@ function chairOf(x, z, ry, parent) {
 // N+3.40
 (function(){
   const g = ediLevels[2], y = LV[2];
-  [6.6, 9.6, 12.6].forEach(z => {
+  [6.0, 8.6, 11.2].forEach(z => {
     const sx0 = ex0+0.2, sx1 = CORE.xW-0.2, sw = sx1-sx0, sc = (sx0+sx1)/2;
     [y+0.6, y+1.15, y+1.7].forEach(yy => box(sw, 0.06, 0.9, sc, yy, z, M.wood, g));
     [sx0+0.2, sc, sx1-0.2].forEach(x => box(0.07, 1.75, 0.9, x, y+0.9, z, M.frame, g, false));
@@ -841,7 +870,7 @@ function chairOf(x, z, ry, parent) {
   const g = ediLevels[4], y = LV[4];
   box(1.6, 0.12, 1.6, 6.5+DX/2, y+0.76, 9.5, M.wood, g);
   [[5.6+DX/2,8.6],[7.4+DX/2,8.6],[5.6+DX/2,10.4],[7.4+DX/2,10.4]].forEach(p => { const c = chairOf(p[0], p[1], 0, g); c.position.y = y; });
-  [[ex0+0.8,1.0],[ex0+0.8,14.0],[ex1-0.8,7.5],[ex1-0.8,14.0],[EXC,0.7]].forEach(p => {
+  [[ex0+0.8,1.0],[CHX+0.8,14.0],[ex1-0.8,7.5],[ex1-0.8,14.0],[EXC,0.7]].forEach(p => {
     box(0.7, 0.5, 0.7, p[0], y+0.25, p[1], M.wood, g, false);
     box(0.55, 0.7, 0.55, p[0], y+0.85, p[1], M.plant, g, false);
   });
@@ -857,7 +886,7 @@ function galpon(x0, x1, z0, z1, opts) {
   const zc = (z0+z1)/2;
   const EV = opts.eave || EAVE, RG = opts.ridge || RIDGE;   // alturas propias del galpón
   const slopePct = (RG-EV)/(zc-z0);
-  const BASE = FLOOR + (OPT2 ? 3.8 : 3.0);        // muro de hormigón 1.80 + bloque 2.00 (lámina A-3)
+  const BASE = FLOOR + (OPT2 ? 3.77 : 3.0);       // murro 1.80 + bloque 1.97 = 3.77 (lámina A-3)
   ['S','N'].forEach(cara => {
     const z = cara==='S' ? z1 : z0;
     const doors = (opts.doors||[]).filter(d => d.cara===cara).sort((a,b)=>a.a-b.a);
@@ -957,7 +986,7 @@ galpon(GE.x0, GE.x1, GE.z0, GE.z1, {
 (function(){
   const zc = (GE.z0+GE.z1)/2, slope = (RIDGE_GE-EAVE_GE)/(zc-GE.z0);
   const yAt = z => RIDGE_GE - Math.abs(z-zc)*slope;
-  const BASE = FLOOR + (OPT2 ? 3.8 : 3.0);
+  const BASE = FLOOR + (OPT2 ? 3.77 : 3.0);
   const zA = GN.z1, zB = GE.z1, dA = 15.4, dB = 19.6, dTop = FLOOR + 4.2;
   wallZ([[zA, dA, FLOOR, BASE], [dB, zB, FLOOR, BASE]], GE.x0, M.block, world);
   const sh = new THREE.Shape();
@@ -1149,6 +1178,15 @@ parkedCar(1.55, 0.05, 12.6, 0, M.carS);                  // auto 2 (visitas/show
 box(4.4, 0.02, 0.1, 15.2, FLOOR+0.04, 5.4, M.paint2, world, false);
 parkedCar(15.5, FLOOR+0.05, 7.7, 0, M.carS);            // auto residente
 
+// -- P1–P4: cuatro parqueaderos en la franja de circulación vehicular (lámina L1) --
+for (let i=0; i<4; i++) {
+  const px = 5.4 + i*2.6;                       // 2.60 m de ancho cada uno
+  box(0.1, 0.02, 4.6, px, rampY(px)+0.05, 17.6, M.paint2, world, false);
+  if (i===3) box(0.1, 0.02, 4.6, px+2.6, rampY(px+2.6)+0.05, 17.6, M.paint2, world, false);
+  label('P'+(4-i), [px+1.3, rampY(px)+0.5, 17.6], 0.4, medidas);
+}
+box(10.4, 0.02, 0.1, 10.6, rampY(10.6)+0.05, 15.3, M.paint2, world, false);
+
 /* ============ ÁRBOLES ============ */
 function tree(x, y, z, s) {
   const g = new THREE.Group();
@@ -1164,20 +1202,21 @@ tree(30, -2.0, -5, 1.2); tree(48, -3.1, 24, 1.1); tree(12, -0.8, 24, 1.1);
 
 /* ============ MEDIDAS ============ */
 label('TERRENO 1000 m² · frente 20 m × fondo 50 m', [25, 17.5, 10], 1.1, medidas, true);
-const EDA = (ez1-ez0) * (ex1-ex0);
+const EDA = (ez1-ez0) * (ex1-ex0) - (CHX-ex0)*(ez1-CHZ)/2;   // 225 − chaflán = 221.94 m²
 label('EDIFICIO ' + (ez1-ez0).toFixed(0) + ' × ' + (ex1-ex0).toFixed(2) + ' m · ' + EDA.toFixed(0) + ' m² por planta' + (OPT2 ? ' · entrepisos 3.40 m' : ''), [EXC, Y4+5.5, 7.5], 1.0, medidas, true);
-label(OPT2 ? 'GALPÓN NUEVO 15 × 15 m · 225 m²' : 'GALPÓN NUEVO 15 × 18 m · 270 m²', [(GN.x0+GN.x1)/2, 9.2, 7.5], 1.0, medidas, true);
+label(OPT2 ? 'GALPÓN NUEVO (BODEGA 2) 15 × 15 m · 225 m²' : 'GALPÓN NUEVO 15 × 18 m · 270 m²', [(GN.x0+GN.x1)/2, 8.7, 7.5], 1.0, medidas, true);
 label('GALPÓN EXISTENTE 20 × 12 m · 240 m² (ya construido)', [39, 7.9, 10], 1.0, medidas, true);
 label('RAMPA 5.00 m ancho · ≈16 % · largo 31 m (1 m plano)', [12, 1.6, 17.5], 0.8, medidas, true);
-label('Retiro frontal 3.00 m · parqueo en paralelo', [RET/2, 2.7, 8], 0.6, medidas, true);
+label('Retiro frontal 3.00 m', [RET/2, 2.7, 8], 0.6, medidas, true);
+label('Chaflán 2.20 × 2.75 m (ochave de ingreso)', [CHX+1.2, 1.4, 15.6], 0.55, medidas, true);
 label('Bahía privada · compras directo al ascensor', [15.2, FLOOR+1.9, 8], 0.6, medidas, true);
 label('Retiro posterior 5.00 m', [47.5, -1.6, 10], 0.6, medidas);
 label('Andén de descarga 1.20 m', [30.5, -3.0, 16.2], 0.6, medidas);
 label('Contenedor 40HQ (12.19 m) a 1 m · unión con tablas', [29, -2.0, 19.0], 0.6, medidas, true);
 label('Portón 4x4 · 3.00 × 2.50 m (según plano A-3)', [21.5, FLOOR+2.9, 15.6], 0.6, medidas, true);
-label('GALPÓN NUEVO: alero +5.80 · cumbrero +7.22 (9.50 / 10.92 m del piso)', [(GN.x0+GN.x1)/2, 8.4, -1.2], 0.7, medidas);
-label('Existente: alero +4.30 · cumbrero +5.72 (sin cambios)', [39, 6.9, -1.2], 0.6, medidas);
-if (OPT2) label('Mampostería 3.80 m (muro 1.80 + bloque 2.00)', [(GN.x0+GN.x1)/2, FLOOR+4.3, 15.9], 0.6, medidas);
+label('GALPÓN NUEVO: alero +5.30 · cumbrero +6.70 (9.00 / 10.40 m del piso)', [(GN.x0+GN.x1)/2, 7.9, -1.2], 0.7, medidas);
+label('Existente: alero +4.30 · cumbrero +5.72 (ya construido)', [39, 6.5, -1.2], 0.6, medidas);
+if (OPT2) label('Mampostería 3.77 m (murro 1.80 + bloque 1.97)', [(GN.x0+GN.x1)/2, FLOOR+4.3, 15.9], 0.6, medidas);
 label('Portón 5.00 × 4.40 m', [30, 1.2, 15.9], 0.55, medidas);
 label('Portón andén 4.20 × 4.20 m', [32.3, 0.5, 17.5], 0.55, medidas);
 label('Galpones unidos en L · vano abierto 15.00 m', [33, 1.6, 7.5], 0.65, medidas, true);
