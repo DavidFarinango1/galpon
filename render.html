@@ -529,6 +529,7 @@ for (let k=0; k<4; k++)
 (function(){
   const gx = [ex0+0.25, XCEN, ex1-0.25];
   const gz = [ez0+0.25, 7.5, ez1-0.25];
+  const CHCOL = ez1-0.25-3.25;           // eje de la columna del chaflán: 3.25 m sobre el eje A
   const FND = OPT2 ? -5.32 : -5.30;      // plintos P2/P3
   const FND1 = OPT2 ? -5.02 : -5.30;     // zapata corrida P1
   const CS  = OPT2 ? 0.35 : 0.30;                  // C1 350x350
@@ -536,11 +537,13 @@ for (let k=0; k<4; k++)
   gx.forEach(x => gz.forEach(z => {
     // sobre la zapata corrida van las columnas de los ejes 1, A y C (con muro); las otras llevan plinto P2
     const sobreCorrida = OPT2 && (x === gx[0] || z === gz[0] || z === gz[2]);
-    if (OPT2 && !sobreCorrida) box(3.0, 0.35, 3.0, x, FND+0.175, z, M.concrete, structEdi);   // plinto P2 (2 u)
-    else if (!OPT2) box(2.0, 0.40, 2.0, x, FND+0.20, z, M.concrete, structEdi);
-    box(0.5, (FLOOR-0.02)-(FND+0.40), 0.5, x, (FND+0.40+FLOOR)/2, z, M.concrete, structEdi);             // pedestal 50x50
-    box(PLQ, 0.03, PLQ, x, FLOOR+0.015, z, M.steelLight, structEdi);
-    box(CS, Y4-FLOOR, CS, x, (FLOOR+Y4)/2, z, M.steel, structEdi);                                       // columna C1
+    // la columna de la esquina eje1/ejeA no existe: se desplaza 3.25 m al arranque del chaflán (lámina A-2)
+    const zc = (OPT2 && x === gx[0] && z === gz[2]) ? CHCOL : z;
+    if (OPT2 && !sobreCorrida) box(3.0, 0.35, 3.0, x, FND+0.175, zc, M.concrete, structEdi);   // plinto P2 (2 u)
+    else if (!OPT2) box(2.0, 0.40, 2.0, x, FND+0.20, zc, M.concrete, structEdi);
+    box(0.5, (FLOOR-0.02)-(FND+0.40), 0.5, x, (FND+0.40+FLOOR)/2, zc, M.concrete, structEdi);            // pedestal 50x50
+    box(PLQ, 0.03, PLQ, x, FLOOR+0.015, zc, M.steelLight, structEdi);
+    box(CS, Y4-FLOOR, CS, x, (FLOOR+Y4)/2, zc, M.steel, structEdi);                                      // columna C1
   }));
   if (OPT2) {   // ZAPATA CORRIDA P1: 2.85 m de ancho, NF −5.02, sigue el muro de hormigón (con el chaflán)
     const BW = 2.85;
@@ -563,17 +566,33 @@ for (let k=0; k<4; k++)
   box((gx[2]-gx[0]), 0.25, 0.35, EXC, FLOOR-0.30, gz[1], M.concrete, structEdi);
   // vigas y losas deck por nivel (viga 500 mm de peralte + losa 130 mm → 2.77 libre)
   [Y1, Y2, Y3, Y4].forEach(y => {
-    gx.forEach(x => box(0.20, 0.50, gz[2]-gz[0], x, y-0.13-0.25, 7.5, M.steel, structEdi));
-    gz.forEach(z => box(gx[2]-gx[0], 0.50, 0.20, EXC, y-0.13-0.25, z, M.steel, structEdi));
-    for (let zz=1.2; zz<14.5; zz+=1.15)
-      box(gx[2]-gx[0], 0.40, 0.14, EXC, y-0.13-0.20, zz, M.steelLight, structEdi, false);
-    const p = new THREE.Mesh(new THREE.PlaneGeometry(ex1-ex0, ez1-ez0), M.skylight);
-    p.rotation.x = -Math.PI/2;
-    p.position.set(EXC, y-0.06, 7.5);
+    const vy = y-0.13-0.25;
+    // vigas en sentido Z: la del eje 1 termina en el chaflán
+    box(0.20, 0.50, CHCOL-gz[0], gx[0], vy, (gz[0]+CHCOL)/2, M.steel, structEdi);
+    [gx[1], gx[2]].forEach(x => box(0.20, 0.50, gz[2]-gz[0], x, vy, 7.5, M.steel, structEdi));
+    // vigas en sentido X: la del eje A arranca tras el chaflán
+    [gz[0], gz[1]].forEach(z => box(gx[2]-gx[0], 0.50, 0.20, EXC, vy, z, M.steel, structEdi));
+    box(gx[2]-CHX, 0.50, 0.20, (CHX+gx[2])/2, vy, gz[2], M.steel, structEdi);
+    // viga diagonal del chaflán
+    const vb = box(Math.hypot(CHX-gx[0], gz[2]-CHCOL), 0.50, 0.20,
+                   (gx[0]+CHX)/2, vy, (CHCOL+gz[2])/2, M.steel, structEdi);
+    vb.rotation.y = -Math.atan2(gz[2]-CHCOL, CHX-gx[0]);
+    // secundarias, recortadas por la diagonal del chaflán
+    for (let zz=1.2; zz<14.5; zz+=1.15) {
+      const x0 = zz > CHZ ? ex0 + (zz-CHZ)/(ez1-CHZ)*(CHX-ex0) : gx[0];
+      box(gx[2]-x0, 0.40, 0.14, (x0+gx[2])/2, y-0.13-0.20, zz, M.steelLight, structEdi, false);
+    }
+    // losa deck con la esquina achaflanada
+    const sh = new THREE.Shape();
+    sh.moveTo(ex0, ez0); sh.lineTo(ex1, ez0); sh.lineTo(ex1, ez1);
+    sh.lineTo(CHX, ez1); sh.lineTo(ex0, CHZ); sh.closePath();
+    const p = new THREE.Mesh(new THREE.ShapeGeometry(sh), M.skylight);
+    p.rotation.x = Math.PI/2;
+    p.position.y = y-0.06;
     structEdi.add(p);
   });
   const tag = OPT2 ? ' (lámina A-1/A-2)' : '';
-  label('Retícula ' + ((ex1-ex0)/2).toFixed(2) + ' × ' + ((ez1-ez0)/2).toFixed(2) + ' m · 1 sola columna interior' + tag, [EXC, Y4+1.6, 7.5], 0.85, structEdi, true);
+  label('Retícula 7.33 × 7.33 m · 9 columnas C1 (1 interior)' + tag, [EXC, Y4+1.6, 7.5], 0.85, structEdi, true);
   label(OPT2 ? 'Columna metálica C1 350×350 (9 u)' : 'Columna metálica 300×300 (9 u)', [XCEN, Y3-1.2, 7.5], 0.6, structEdi);
   label('Viga principal I 500×200×15×8 · secundarias @ 1.15 m', [EXC, Y1+2.6, 11.5], 0.55, structEdi);
   label(OPT2 ? 'Plinto P2 3.00×3.00×0.35 · N-5.32' : 'Plinto 2.00×2.00×0.40 m · N-5.30', [XCEN, -5.0, 7.5], 0.55, structEdi);
