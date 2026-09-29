@@ -542,19 +542,25 @@ for (let k=0; k<4; k++)
     box(PLQ, 0.03, PLQ, x, FLOOR+0.015, z, M.steelLight, structEdi);
     box(CS, Y4-FLOOR, CS, x, (FLOOR+Y4)/2, z, M.steel, structEdi);                                       // columna C1
   }));
-  if (OPT2) {   // ZAPATA CORRIDA P1: 2.85 m de ancho, NF −5.02, bajo los muros de hormigón
+  if (OPT2) {   // ZAPATA CORRIDA P1: 2.85 m de ancho, NF −5.02, sigue el muro de hormigón (con el chaflán)
     const BW = 2.85;
-    [gz[0], gz[2]].forEach(z => box(ex1-ex0, 0.35, BW, EXC, FND1+0.175, z, M.concrete, structEdi));
-    box(BW, 0.35, ez1-ez0, gx[0], FND1+0.175, 7.5, M.concrete, structEdi);
+    box(ex1-ex0, 0.35, BW, EXC, FND1+0.175, gz[0], M.concrete, structEdi);                  // eje C (norte), completo
+    box(ex1-CHX, 0.35, BW, (CHX+ex1)/2, FND1+0.175, gz[2], M.concrete, structEdi);          // eje A (sur), arranca tras el chaflán
+    box(BW, 0.35, CHZ-ez0, gx[0], FND1+0.175, (ez0+CHZ)/2, M.concrete, structEdi);          // eje 1 (frente), termina en el chaflán
+    (function(){                                                                             // tramo diagonal bajo el muro del chaflán
+      const b = box(Math.hypot(CHX-ex0, ez1-CHZ) + BW*0.5, 0.35, BW,
+                    (ex0+CHX)/2, FND1+0.175, (CHZ+ez1)/2, M.concrete, structEdi);
+      b.rotation.y = -Math.atan2(ez1-CHZ, CHX-ex0);
+    })();
     // PLINTOS P3 del galpón (1.50 × 2.00 × 0.30, NF −5.32) — 6 unidades
     [GN.x0+1.5, GN.x0+7.5, GN.x0+13.5].forEach(px => [GN.z0+0.4, GN.z1-0.4].forEach(pz => {
       box(1.5, 0.30, 2.0, px, FND+0.15, pz, M.concrete, structEdi);
       box(0.4, (FLOOR-0.02)-(FND+0.30), 0.4, px, (FND+0.30+FLOOR)/2, pz, M.concrete, structEdi);
     }));
   }
-  // cadenas de amarre 35x25
-  gx.forEach(x => box(0.35, 0.25, (gz[2]-gz[0]), x, FLOOR-0.30, 7.5, M.concrete, structEdi));
-  gz.forEach(z => box((gx[2]-gx[0]), 0.25, 0.35, EXC, FLOOR-0.30, z, M.concrete, structEdi));
+  // cadenas de amarre 35x25 — ejes 2 y 3 y eje B; el perímetro (1, A, C) lleva muro + zapata corrida
+  [gx[1], gx[2]].forEach(x => box(0.35, 0.25, (gz[2]-gz[0]), x, FLOOR-0.30, 7.5, M.concrete, structEdi));
+  box((gx[2]-gx[0]), 0.25, 0.35, EXC, FLOOR-0.30, gz[1], M.concrete, structEdi);
   // vigas y losas deck por nivel (viga 500 mm de peralte + losa 130 mm → 2.77 libre)
   [Y1, Y2, Y3, Y4].forEach(y => {
     gx.forEach(x => box(0.20, 0.50, gz[2]-gz[0], x, y-0.13-0.25, 7.5, M.steel, structEdi));
