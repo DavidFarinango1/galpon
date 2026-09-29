@@ -124,6 +124,7 @@
   <label class="row">Medidas y rótulos <input type="checkbox" id="chkMedidas" checked></label>
   <label class="row">Estructura galpón nuevo <input type="checkbox" id="chkStruct"></label>
   <label class="row">Estructura y cimientos <input type="checkbox" id="chkStructEdi"></label>
+  <label class="row">Cimentación (bajo tierra) <input type="checkbox" id="chkCimen"></label>
   <label class="row">Rotación automática <input type="checkbox" id="chkRotate"></label>
 </div>
 
@@ -384,6 +385,8 @@ const medidas = new THREE.Group(); scene.add(medidas);
 const ediLevels = LV.map(() => { const g = new THREE.Group(); world.add(g); return g; });
 let roofTerraza = new THREE.Group(); ediLevels[4].add(roofTerraza);
 const structEdi = new THREE.Group(); structEdi.visible = false; world.add(structEdi);
+const cimen = new THREE.Group(); cimen.visible = false; world.add(cimen);      // todo lo que va bajo tierra
+const pisosGalpon = new THREE.Group(); world.add(pisosGalpon);                 // pisos de los galpones (se ocultan en la vista de cimentación)
 const XCEN = EXC;                              // columna interior única (centro del edificio)
 
 function box(w, h, d, x, y, z, mat, parent, shadow=true) {
@@ -603,6 +606,91 @@ for (let k=0; k<4; k++)
   if (OPT2) label('Plintos P3 galpón · 1.50 × 2.00 × 0.30 · NF −5.32', [(GN.x0+GN.x1)/2, -4.6, 7.5], 0.55, structEdi);
   label('Cadena de amarre 35×25', [EXC, -3.3, 12.2], 0.5, structEdi);
   label('Altura libre bajo viga 2.77 m', [EXC, Y2-1.4, 3.0], 0.55, structEdi);
+})();
+
+/* ---- VISTA DE CIMENTACIÓN: todo lo que va bajo tierra, acotado (láminas A-1/A-2) ---- */
+(function(){
+  const gx = [ex0+0.25, XCEN, ex1-0.25];
+  const gz = [ez0+0.25, 7.5, ez1-0.25];
+  const NFC = OPT2 ? -5.02 : -5.30;          // desplante de la zapata corrida
+  const NFP = OPT2 ? -5.32 : -5.30;          // desplante de los plintos
+  const BW  = 2.85;                          // ancho de la zapata corrida P1
+  const CHCOL = ez1-0.25-3.25;               // eje de la columna del chaflán
+  const MREP = new THREE.MeshStandardMaterial({ map:texConcrete(3,2,'#cfc9bd'), roughness:0.95 });
+  const MSUB = new THREE.MeshStandardMaterial({ map:texConcrete(4,3,'#a89a80'), roughness:1 });
+
+  // ----- ZAPATA CORRIDA P1, siguiendo el chaflán, con su replantillo -----
+  function corrida(w, d, x, z, rot) {
+    const b = box(w, 0.35, d, x, NFC+0.175, z, M.concrete, cimen);
+    const r = box(w+0.2, 0.05, d+0.2, x, NFC-0.025, z, MREP, cimen);
+    if (rot) { b.rotation.y = rot; r.rotation.y = rot; }
+  }
+  corrida(ex1-ex0, BW, EXC, gz[0]);                                   // eje C
+  corrida(ex1-CHX, BW, (CHX+ex1)/2, gz[2]);                           // eje A
+  corrida(BW, CHZ-ez0, gx[0], (ez0+CHZ)/2);                           // eje 1
+  corrida(Math.hypot(CHX-ex0, ez1-CHZ)+BW*0.5, BW, (ex0+CHX)/2, (CHZ+ez1)/2,
+          -Math.atan2(ez1-CHZ, CHX-ex0));                             // chaflán
+
+  // ----- PLINTOS P2 (2 u) -----
+  [[gx[1], gz[1]], [gx[2], gz[1]]].forEach(p => {
+    box(3.0, 0.35, 3.0, p[0], NFP+0.175, p[1], M.concrete, cimen);
+    box(3.2, 0.05, 3.2, p[0], NFP-0.025, p[1], MREP, cimen);
+  });
+
+  // ----- PEDESTALES 50×50 + PLACAS DE APOYO 485×485×15 -----
+  gx.forEach(x => gz.forEach(z => {
+    const zc = (x === gx[0] && z === gz[2]) ? CHCOL : z;
+    const sobreCorrida = (x === gx[0] || z === gz[0] || z === gz[2]);
+    const base = (sobreCorrida ? NFC : NFP) + 0.35;
+    box(0.5, (FLOOR-0.02)-base, 0.5, x, (base+FLOOR)/2, zc, M.concrete, cimen);
+    box(0.485, 0.03, 0.485, x, FLOOR+0.015, zc, M.steelLight, cimen);
+  }));
+
+  // ----- CADENAS DE AMARRE 35×25 (ejes 2, 3 y B) -----
+  [gx[1], gx[2]].forEach(x => box(0.35, 0.25, gz[2]-gz[0], x, FLOOR-0.30, 7.5, M.concrete, cimen));
+  box(gx[2]-gx[0], 0.25, 0.35, EXC, FLOOR-0.30, gz[1], M.concrete, cimen);
+
+  // ----- MURO DE CONTENCIÓN h.a. e = 35 cm (perímetro del subsuelo) -----
+  wallZ([[ez0, CHZ, FLOOR, Y1]], ex0, M.concrete, cimen, 0.35);
+  wallX([[ex0, ex1, FLOOR, Y1]], ez0, M.concrete, cimen, 0.35);
+  wallX([[CHX, ex1, FLOOR, Y1]], ez1, M.concrete, cimen, 0.35);
+  (function(){
+    const b = box(Math.hypot(CHX-ex0, ez1-CHZ), Y1-FLOOR, 0.35,
+                  (ex0+CHX)/2, (FLOOR+Y1)/2, (CHZ+ez1)/2, M.concrete, cimen);
+    b.rotation.y = -Math.atan2(ez1-CHZ, CHX-ex0);
+  })();
+
+  // ----- GALPÓN: plintos P3 (6 u), pedestales 40×40 y cadenas 25×25 -----
+  const gnx = [GN.x0+1.5, GN.x0+7.5, GN.x0+13.5], gnz = [GN.z0+0.4, GN.z1-0.4];
+  gnx.forEach(x => gnz.forEach(z => {
+    box(1.5, 0.30, 2.0, x, NFP+0.15, z, M.concrete, cimen);
+    box(1.7, 0.05, 2.2, x, NFP-0.025, z, MREP, cimen);
+    box(0.4, (FLOOR-0.02)-(NFP+0.30), 0.4, x, (NFP+0.30+FLOOR)/2, z, M.concrete, cimen);
+    box(0.375, 0.03, 0.35, x, FLOOR+0.015, z, M.steelLight, cimen);
+  }));
+  gnz.forEach(z => box(GN.x1-GN.x0, 0.25, 0.25, (GN.x0+GN.x1)/2, FLOOR-0.30, z, M.concrete, cimen));
+  gnx.forEach(x => box(0.25, 0.25, gnz[1]-gnz[0], x, FLOOR-0.30, 7.5, M.concrete, cimen));
+
+  // ----- MUESTRA DEL PISO: contrapiso 12 cm sobre sub-base 30 cm -----
+  const px = 25.5, pz = 4.5;
+  box(3.0, 0.12, 3.0, px, FLOOR-0.06, pz, M.floor, cimen);
+  box(3.3, 0.30, 3.3, px, FLOOR-0.27, pz, MSUB, cimen);
+
+  // ----- RÓTULOS ACOTADOS -----
+  label('CIMENTACIÓN · todo bajo el nivel N −3.70', [EXC, Y1+1.2, 7.5], 0.95, cimen, true);
+  label('Zapata corrida P1 · 2.85 m ancho × 0.35 · desplante NF −5.02', [EXC, NFC-0.8, gz[0]-2.4], 0.7, cimen, true);
+  label('Plinto P2 · 3.00 × 3.00 × 0.35 · NF −5.32 (2 u)', [gx[1], NFP-0.8, gz[1]-2.6], 0.65, cimen, true);
+  label('Plinto P3 galpón · 1.50 × 2.00 × 0.30 · NF −5.32 (6 u)', [(GN.x0+GN.x1)/2, NFP-0.8, 7.5], 0.65, cimen, true);
+  label('Pedestal 50 × 50 cm', [gx[1]+1.9, (NFP+FLOOR)/2, gz[1]], 0.5, cimen);
+  label('Placa de apoyo 485 × 485 × 15 mm · 12 Ø 3/4\" ASTM A193-B7', [gx[1], FLOOR+0.7, gz[1]+2.4], 0.5, cimen);
+  label('Cadena de amarre 35 × 25 cm', [EXC-3, FLOOR-0.65, gz[1]], 0.5, cimen);
+  label('Cadena de amarre 25 × 25 cm', [(GN.x0+GN.x1)/2, FLOOR-0.65, gnz[1]+0.9], 0.5, cimen);
+  label('Muro de contención h.a. e = 35 cm · h 3.83 m', [ex0-1.6, (FLOOR+Y1)/2, 5.5], 0.6, cimen);
+  label('Replantillo f\'c = 180 · e 5 cm', [gx[0]-1.4, NFC-0.35, 9.5], 0.45, cimen);
+  label('Contrapiso 12 cm + sub-base 30 cm al 95 %', [px, FLOOR+0.9, pz], 0.6, cimen, true);
+  label('Plataforma N −3.70', [10, FLOOR+0.45, -1.6], 0.6, cimen);
+  label('Excavación hasta NF −5.32', [10, NFP-0.45, -1.6], 0.55, cimen);
+  label('Zona blanda: sondeo P-2 · qadm ≈ 14 T/m²', [(GN.x0+GN.x1)/2, NFP-1.6, 14.5], 0.55, cimen);
 })();
 
 // --- B0 (subsuelo) — muros de hormigón armado e=35 cm en el perímetro (lámina A-2) ---
@@ -1008,7 +1096,7 @@ function galpon(x0, x1, z0, z1, opts) {
   f.rotation.x = -Math.PI/2;
   f.position.set((x0+x1)/2, FLOOR+0.02, (z0+z1)/2);
   f.receiveShadow = true;
-  g.add(f);
+  pisosGalpon.add(f);
 }
 
 /* ---- GALPÓN NUEVO ---- */
@@ -1299,6 +1387,7 @@ let camAnim = null;
 function goView(name) {
   const v = VIEWS[name];
   if (structEdi.visible) { structEdi.visible = false; document.getElementById('chkStructEdi').checked = false; }
+  if (cimen.visible) setCimen(false);
   if (v.level !== undefined) setLevels(v.level, v.hideRoof);
   else setLevels(4, false);
   camAnim = { t:0, p0:camera.position.clone(), p1:V(...v.pos), t0:controls.target.clone(), t1:V(...v.tgt) };
@@ -1307,6 +1396,7 @@ function goView(name) {
 // Vista cenital (planta): cámara casi vertical sobre el nivel, pisos superiores ocultos
 function goPlan(k) {
   if (structEdi.visible) { structEdi.visible = false; document.getElementById('chkStructEdi').checked = false; }
+  if (cimen.visible) setCimen(false);
   setLevels(k, true);                          // en la terraza también quitamos el techo de teja
   const cy = LV[k] + 20;
   camAnim = { t:0,
@@ -1325,10 +1415,28 @@ document.querySelectorAll('#views .btn[data-view]').forEach(b => b.addEventListe
 document.getElementById('sunSlider').addEventListener('input', e => setSunHour(parseFloat(e.target.value)));
 document.getElementById('chkStruct').addEventListener('change', e => { cladNew.visible = !e.target.checked; });
 document.getElementById('chkStructEdi').addEventListener('change', e => {
+  if (e.target.checked) setCimen(false);
   structEdi.visible = e.target.checked;
   if (e.target.checked) ediLevels.forEach(g => g.visible = false);
   else setLevels(4, false);
 });
+// VISTA DE CIMENTACIÓN: deja sólo lo que va bajo el nivel N −3.70
+function setCimen(on) {
+  cimen.visible = on;
+  cladNew.visible = !on && !document.getElementById('chkStruct').checked;
+  structure.visible = !on;
+  pisosGalpon.visible = !on;
+  document.getElementById('chkCimen').checked = on;
+  if (on) {
+    structEdi.visible = false;
+    document.getElementById('chkStructEdi').checked = false;
+    ediLevels.forEach(g => g.visible = false);
+    roofTerraza.visible = false;
+    camAnim = { t:0, p0:camera.position.clone(), p1:V(-12, 6, 34),
+                t0:controls.target.clone(), t1:V(16, FLOOR-1.2, 8) };
+  } else setLevels(4, false);
+}
+document.getElementById('chkCimen').addEventListener('change', e => setCimen(e.target.checked));
 document.getElementById('chkRotate').addEventListener('change', e => { controls.autoRotate = e.target.checked; controls.autoRotateSpeed = 0.9; });
 document.getElementById('chkMedidas').addEventListener('change', e => { medidas.visible = e.target.checked; });
 document.querySelectorAll('#vehBtns button').forEach((b,i) => b.addEventListener('click', () => selectVeh(i)));
