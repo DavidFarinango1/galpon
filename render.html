@@ -570,17 +570,18 @@ for (let k=0; k<4; k++)
     // vigas en sentido Z: la del eje 1 termina en el chaflán
     box(0.20, 0.50, CHCOL-gz[0], gx[0], vy, (gz[0]+CHCOL)/2, M.steel, structEdi);
     [gx[1], gx[2]].forEach(x => box(0.20, 0.50, gz[2]-gz[0], x, vy, 7.5, M.steel, structEdi));
-    // vigas en sentido X: la del eje A arranca tras el chaflán
+    // vigas V1 en sentido X: la del eje A corre del eje 2 al eje 3
     [gz[0], gz[1]].forEach(z => box(gx[2]-gx[0], 0.50, 0.20, EXC, vy, z, M.steel, structEdi));
-    box(gx[2]-CHX, 0.50, 0.20, (CHX+gx[2])/2, vy, gz[2], M.steel, structEdi);
-    // viga diagonal del chaflán
-    const vb = box(Math.hypot(CHX-gx[0], gz[2]-CHCOL), 0.50, 0.20,
-                   (gx[0]+CHX)/2, vy, (CHCOL+gz[2])/2, M.steel, structEdi);
-    vb.rotation.y = -Math.atan2(gz[2]-CHCOL, CHX-gx[0]);
-    // secundarias, recortadas por la diagonal del chaflán
-    for (let zz=1.2; zz<14.5; zz+=1.15) {
-      const x0 = zz > CHZ ? ex0 + (zz-CHZ)/(ez1-CHZ)*(CHX-ex0) : gx[0];
-      box(gx[2]-x0, 0.40, 0.14, (x0+gx[2])/2, y-0.13-0.20, zz, M.steelLight, structEdi, false);
+    box(gx[2]-gx[1], 0.50, 0.20, (gx[1]+gx[2])/2, vy, gz[2], M.steel, structEdi);
+    // VIGA DIAGONAL V1 (lámina A-2): de la columna del chaflán directo a la columna eje 2 / eje A.
+    // El triángulo de losa que queda por fuera de esta viga trabaja en voladizo.
+    const vb = box(Math.hypot(gx[1]-gx[0], gz[2]-CHCOL), 0.50, 0.20,
+                   (gx[0]+gx[1])/2, vy, (CHCOL+gz[2])/2, M.steel, structEdi);
+    vb.rotation.y = -Math.atan2(gz[2]-CHCOL, gx[1]-gx[0]);
+    // vigas secundarias V2 en sentido Z, recortadas contra el borde del chaflán
+    for (let xx=gx[0]+1.0; xx<gx[2]-0.4; xx+=1.15) {
+      const z1 = xx < CHX ? CHZ + (xx-ex0)/(CHX-ex0)*(ez1-CHZ) : gz[2];
+      box(0.14, 0.40, z1-gz[0], xx, y-0.13-0.20, (gz[0]+z1)/2, M.steelLight, structEdi, false);
     }
     // losa deck con la esquina achaflanada
     const sh = new THREE.Shape();
@@ -594,7 +595,8 @@ for (let k=0; k<4; k++)
   const tag = OPT2 ? ' (lámina A-1/A-2)' : '';
   label('Retícula 7.33 × 7.33 m · 9 columnas C1 (1 interior)' + tag, [EXC, Y4+1.6, 7.5], 0.85, structEdi, true);
   label(OPT2 ? 'Columna metálica C1 350×350 (9 u)' : 'Columna metálica 300×300 (9 u)', [XCEN, Y3-1.2, 7.5], 0.6, structEdi);
-  label('Viga principal I 500×200×15×8 · secundarias @ 1.15 m', [EXC, Y1+2.6, 11.5], 0.55, structEdi);
+  label('Viga principal V1 I 500×200×15×8 · secundarias V2 I 400×140×10×6', [EXC, Y1+2.6, 11.5], 0.55, structEdi);
+  label('Viga diagonal V1 resuelve el chaflán (sin columna en la esquina)', [7.5, Y1+1.4, 13.6], 0.55, structEdi, true);
   label(OPT2 ? 'Plinto P2 3.00×3.00×0.35 · N-5.32' : 'Plinto 2.00×2.00×0.40 m · N-5.30', [XCEN, -5.0, 7.5], 0.55, structEdi);
   label('Pedestal 50×50 + placa 485×485×15 (12 Ø3/4")', [ex0+1.5, -4.2, 3.5], 0.5, structEdi);
   if (OPT2) label('Zapata corrida P1 · 15.00 × 2.85 × 0.35 · NF −5.02', [EXC, -4.5, ez1-0.6], 0.55, structEdi);
